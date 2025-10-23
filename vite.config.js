@@ -10,4 +10,8 @@ export default defineConfig({
       },
     }),
   ],
+  server: {
+    host: true, // same as --host
+    port: 5173, // or another open port
+  }
 })

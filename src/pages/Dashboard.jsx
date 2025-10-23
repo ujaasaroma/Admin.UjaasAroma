@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import "../styles/Dashboard.css";
-import Sidebar from "./Sidebar";
+import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
 
 const Dashboard = () => {
@@ -16,14 +16,20 @@ const Dashboard = () => {
                 <div style={{ display: 'flex' }}>
                     <Sidebar barStatus={isOpen ? 'active-menu' : 'inactive-menu'} />
                     <section className="content">
-                        <div className="card">
-                            <h3>New Appointments</h3>
-                            <hr />
+                        <div className="money-card">
+                            <div className="money-sub-card">
+                                <div className="money-info">
+                                    <p className="money-title">Total Users</p>
+                                    <h2 className="money-amount">$53k</h2>
+                                </div>
+                                <div className="money-icon">
+                                    <i className="fa-solid fa-briefcase"></i>
+                                </div>
+                            </div>
+                            <p className="money-change"><strong>+55%</strong> less than last week</p>
                         </div>
-                        <div className="card">
-                            <h3>All Appointments</h3>
-                            <hr />
-                        </div>
+
+                       
                     </section>
                 </div>
 

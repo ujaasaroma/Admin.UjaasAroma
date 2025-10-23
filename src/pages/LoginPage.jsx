@@ -28,14 +28,24 @@ function LoginPage() {
       dispatch(loginFailure('Password must be at least 6 characters'));
       return;
     }
+
     dispatch(loginStart());
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
+
       const userDoc = await getDoc(doc(db, 'users', user.uid));
+
       if (userDoc.exists() && userDoc.data().admin === 1) {
-        dispatch(loginSuccess({ uid: user.uid, email: user.email }));
-        alert("Login Successfull..")
+        const userData = userDoc.data();
+
+        // ✅ include Firestore name
+        dispatch(loginSuccess({
+          uid: user.uid,
+          email: user.email,
+          name: userData.name || userData.displayName || 'User'
+        }));
+
         navigate('/dashboard');
       } else {
         dispatch(loginFailure('Access denied. Admin login only.'));
@@ -45,11 +55,12 @@ function LoginPage() {
     }
   };
 
+
   return (
     <div className="login-page">
       <div className='login-box'>
         <div className="login-header">
-          <h3>Sign in</h3>
+          <h3>Admin Panel</h3>
         </div>
         <div className="login-card">
           <form className="login-form" onSubmit={handleSubmit}>
@@ -88,7 +99,7 @@ function LoginPage() {
             </button>
 
             <p className="forgot-text">
-              <span onClick={() => navigate('/signup')}>Forgot Password</span>
+              <span onClick={() => navigate('/forgotPassword')}>Forgot Password</span>
             </p>
           </form>
         </div>

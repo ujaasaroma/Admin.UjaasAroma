@@ -1,7 +1,8 @@
 /* Sidebar */
 .sidebar {
-  top:100px;
-  height:80vh;
+  height: 100%;
+  min-height: 90vh;
+  overflow: hidden;
   width: 270px;
   background-color: #fff;
   border-right: 1px solid #eee;
@@ -41,13 +42,20 @@
   /* border-radius: 10px; */
 }
 
-@media only screen and (max-width: 600px) {
-  .inactive-menu {
-    display: none;
+@media only screen and (max-width: 800px) {
+  .sidebar {
+    position: absolute;
+    left: -270px;
+    transition: left 0.3s ease;
   }
+
+  /* .inactive-menu {
+    display: none;
+  } */
   .active-menu {
     position: absolute;
     top: 85px;
     height: 80vh;
+    left: 0
   }
 }
