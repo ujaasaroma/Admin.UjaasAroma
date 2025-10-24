@@ -1,0 +1,156 @@
+.products-container {
+  padding: 25px;
+  font-family: "Inter", sans-serif;
+  background-color: #f9fafc;
+  min-height: 100vh;
+}
+
+.top-bar {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.top-bar input {
+  flex: 1;
+  padding: 10px 15px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  font-size: 14px;
+  outline: none;
+}
+
+.top-bar select {
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  background: #fff;
+  cursor: pointer;
+}
+
+.product-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: #fff;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.05);
+}
+
+.product-table th,
+.product-table td {
+  padding: 14px 18px;
+  font-size: 14px;
+  color: #333;
+  border-bottom: 1px solid #f0f0f0;
+  text-align: left;
+}
+
+.product-table th {
+  background-color: #f7f8fa;
+  font-weight: 600;
+}
+
+.product-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.product-name-cell img {
+  width: 38px;
+  height: 38px;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+.status {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.status.available {
+  background: #e8f8f0;
+  color: #2f9d63;
+}
+
+.status.out {
+  background: #fdecea;
+  color: #d93025;
+}
+
+.actions button {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 16px;
+  margin-right: 8px;
+  transition: transform 0.2s ease;
+}
+
+.actions button:hover {
+  transform: scale(1.2);
+}
+
+/* Hover row highlight */
+tr:hover {
+  background-color: #f7f9ff;
+  position: relative;
+}
+
+/* Hover card styling */
+.hover-card-cell {
+  position: absolute;
+  right: 440px;
+  top: 150px;
+}
+
+.hover-card {
+  position: absolute;
+  width: 400px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  padding: 15px;
+  transform: translateY(-20px);
+  z-index: 99;
+  animation: fadeIn 0.3s ease;
+}
+
+.hover-card img {
+  width: 40%;
+  border-radius: 10px;
+  margin-bottom: 10px;
+}
+
+.hover-card h4 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.hover-card p {
+  font-size: 13px;
+  color: #666;
+  margin: 6px 0;
+}
+
+.discount {
+  color: #2f9d63;
+  font-weight: 600;
+}
+
+.old {
+  text-decoration: line-through;
+  color: #888;
+  font-size: 12px;
+}
+
+.loading {
+  text-align: center;
+  padding: 50px;
+  font-size: 16px;
+  color: #444;
+}

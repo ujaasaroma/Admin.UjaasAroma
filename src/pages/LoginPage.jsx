@@ -5,7 +5,7 @@ import { signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 import { loginStart, loginSuccess, loginFailure } from '../features/authSlice';
-import '../styles/LoginPage.css'; // 👈 Add this line
+import './styles/LoginPage.css'; // 👈 Add this line
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -51,7 +51,8 @@ function LoginPage() {
         dispatch(loginFailure('Access denied. Admin login only.'));
       }
     } catch (err) {
-      dispatch(loginFailure(err.message || 'Login failed'));
+      console.log(err.message);
+      dispatch(loginFailure('Invalid Credentials'));
     }
   };
 

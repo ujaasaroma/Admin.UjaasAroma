@@ -1,7 +1,7 @@
 /* Sidebar */
 .sidebar {
   height: 100vh;
-  min-height: 50vh;
+  min-height: 100vh;
   overflow: hidden;
   width: 270px;
   background-color: #fff;
@@ -10,13 +10,19 @@
   flex-direction: column;
   align-items: center;
   z-index: 9;
+  padding-top: 20px;
+  transition: all 0.3s ease;
 }
 
+/* Menu container */
 .menu {
   width: 100%;
   padding-top: 25px;
+  display: flex;
+  flex-direction: column;
 }
 
+/* Menu item */
 .menu-item {
   padding: 15px 25px;
   cursor: pointer;
@@ -26,29 +32,70 @@
   column-gap: 20px;
   font-size: 14px;
   color: #333;
-  transition: background 0.3s;
+  transition: background 0.3s, color 0.3s;
   margin: 0 10px;
   border-radius: 10px;
+  user-select: none;
 }
 
 .menu-item:hover {
-  background-color: #f0f0f0;
+  background-color: #ccc;
+  color:#e68428;
 }
 
 .menu-item.active {
   background-color: #000;
   color: #fff;
   font-weight: 500;
-  /* border-radius: 10px; */
 }
 
+/* Submenu container */
+.submenu {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  background-color: #fafafa;
+  margin-top: -5px;
+  margin-bottom: 5px;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+
+/* Submenu items */
+.submenu-item {
+  padding: 15px 35px;
+  font-size: 13.5px;
+  cursor: pointer;
+  color: #555;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  column-gap: 20px;
+  transition: background 0.25s, color 0.25s;
+  margin: 0 10px;
+  border-radius: 10px;
+  user-select: none;
+}
+
+.submenu-item:hover {
+  background-color: #ccc;
+  color:#e68428;
+}
+
+/* When Orders is expanded */
+.menu-item.open span:last-child {
+  transform: rotate(360deg);
+  transition: transform 0.3s ease;
+}
+
+/* Mobile responsiveness */
 @media only screen and (max-width: 800px) {
   .sidebar {
     position: absolute;
     left: -270px;
     transition: left 0.3s ease;
     background-image: linear-gradient(to bottom, #fff, #eee);
-    height: 50vh;
+    height: auto;
   }
 
   .active-menu {
@@ -56,5 +103,15 @@
     top: 85px;
     left: 0;
     z-index: 99999999;
+  }
+
+  .menu-item {
+    font-size: 13px;
+    padding: 12px 20px;
+  }
+
+  .submenu-item {
+    padding: 8px 45px;
+    font-size: 13px;
   }
 }

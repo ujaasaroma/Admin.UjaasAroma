@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import "../styles/Dashboard.css";
+import "./styles/Dashboard.css";
 import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
 import { collection, onSnapshot, query, where } from "firebase/firestore";

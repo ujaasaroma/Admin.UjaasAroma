@@ -9,8 +9,8 @@ import {
 } from "firebase/firestore";
 import { sendPasswordResetEmail } from "firebase/auth";
 import { db, auth } from "../config/firebase";
-import "../styles/LoginPage.css";
-import "../styles/ForgotPasswordPage.css";
+import "./styles/LoginPage.css";
+import "./styles/ForgotPasswordPage.css";
 
 function ForgotPasswordPage() {
   const navigate = useNavigate();
@@ -108,7 +108,7 @@ function ForgotPasswordPage() {
 
             <input
               type="email"
-              placeholder="Email"
+              placeholder="Email" 
               className="login-input"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
