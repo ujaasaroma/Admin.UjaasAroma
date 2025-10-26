@@ -13,13 +13,19 @@ import Sidebar from "../components/Sidebar";
 import Footer from "../components/Footer";
 import ProductSkeleton from "../components/ProductSkeleton"; // shimmer component
 import dummy_picture from "../assets/icons/dummy_profile_picture.png"
+import { useLocation } from "react-router-dom";
 
 export default function Users() {
+    const location = useLocation();
+    const userType = location.state?.userType;
     const [isOpen, setIsOpen] = useState(false);
     const [users, setUsers] = useState([]);
     const [hovered, setHovered] = useState(null);
     const [search, setSearch] = useState("");
-    const [filter, setFilter] = useState("All");
+    const[filter, setFilter] = useState(
+        userType === "admins" ? "Admins" : userType === "clients" ? "Clients" : "All"
+    );
+
     const [sort, setSort] = useState("Most Relevant");
     const [loading, setLoading] = useState(true);
 
@@ -73,7 +79,7 @@ export default function Users() {
         )
         .filter((u) => {
             if (filter === "Admins") return u.admin === "Yes";
-            if (filter === "Verified Emails") return u.emailVerified === "Verified";
+            if (filter === "Clients") return u.admin === "No";
             return true;
         })
         .sort((a, b) => {
@@ -118,11 +124,11 @@ export default function Users() {
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                             />
-                            <div className="filter-sort">
+                            <div className="filter-sort" style={{width:'20%'}}>
                                 <select value={filter} onChange={(e) => setFilter(e.target.value)}>
                                     <option>All</option>
                                     <option>Admins</option>
-                                    <option>Verified Emails</option>
+                                    <option>Clients</option>
                                 </select>
                                 <select value={sort} onChange={(e) => setSort(e.target.value)}>
                                     <option>Most Relevant</option>
@@ -176,7 +182,7 @@ export default function Users() {
                                                     {u.admin}
                                                 </span>
                                             </td>
-                                            
+
                                             <td>{u.createdAt}</td>
                                             <td className="actions">
                                                 <button onClick={() => handleEdit(u.id)}>✏️</button>

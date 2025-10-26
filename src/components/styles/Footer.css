@@ -2,7 +2,7 @@
 .footer {
     background-color: #ffffff;
     display: flex;
-    justify-content: center;
+    justify-content: space-between;
     align-items: center;
     font-size: 13px;
     color: #999999;
@@ -13,4 +13,25 @@
     height: 50px;
     max-height: 50px;
     transition: all 0.3s ease;
+}
+
+.footer-text {
+    width: 98%;
+    text-align: center;
+}
+
+.footer-btn {
+    width: 2%;
+    cursor: pointer;
+}
+
+@media only screen and (max-width: 800px) {
+    .footer-text {
+        width: 95%;
+        text-align: left;
+    }
+
+    .footer-btn {
+        width: 5%;
+    }
 }

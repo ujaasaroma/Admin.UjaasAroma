@@ -1,9 +1,6 @@
 import { useState } from "react";
 import "./styles/Sidebar.css";
 import { useNavigate } from "react-router-dom";
-import { logout } from "../features/authSlice";
-import { signOut } from "firebase/auth";
-import { auth } from "../config/firebase";
 import { useDispatch } from "react-redux";
 
 const Sidebar = (props) => {
@@ -34,53 +31,39 @@ const Sidebar = (props) => {
     navigate('/users');
   }
 
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      dispatch(logout());
-      navigate("/");
-    } catch (error) {
-      console.error("Logout error:", error);
-    }
-  };
+ 
 
   return (
     <aside className={`sidebar ${props.barStatus}`}>
       <nav className="menu">
         <div className={`menu-item ${props.dashboard}`} onClick={() => handleDashboard()}>
-          <span>🏠</span> <span>Dashboard</span>
+          <i class="fa-solid fa-house-user"></i> <span>Dashboard</span>
         </div>
 
         <div className={`menu-item ${props.products}`} onClick={() => handleProducts()}>
-          <span>📂</span> <span>Products</span>
+          <i class="fa-solid fa-folder-closed"></i> <span>Products</span>
         </div>
 
         <div className={`menu-item ${openOrders ? "open" : ""}`} onClick={toggleOrders}>
-          <span>💈</span> <span>Orders ▾</span>
+          <i class="fa-solid fa-list"></i> <span>Orders ▾</span>
         </div>
 
         {openOrders && (
           <div className="submenu">
-            <div className={`menu-item ${status === 2.1 ? 'active' : ''}`} onClick={() => setStatus(2.1)}><span>✅</span> <span>Success Orders</span></div>
-            <div className={`menu-item ${status === 2.2 ? 'active' : ''}`} onClick={() => setStatus(2.2)}><span>❌</span> <span>Failed Orders</span></div>
+            <div className={`submenu-item ${status === 2.1 ? 'active' : ''}`} onClick={() => setStatus(2.1)}><i class="fa-solid fa-check" style={{ color: 'green', fontSize: 15, width: 20 }}></i> <span>Success Orders</span></div>
+            <div className={`submenu-item ${status === 2.2 ? 'active' : ''}`} onClick={() => setStatus(2.2)}><i class="fa-solid fa-xmark" style={{ color: 'red', fontSize: 17, width: 20 }}></i> <span>Failed Orders</span></div>
           </div>
         )}
 
         <div className={`menu-item ${props.customerQueries}`} onClick={() => handleCustomerQueries()}>
-          <span>📅</span> <span>Customer Queries</span>
+          <i class="fa-solid fa-calendar-days"></i> <span>Customer Queries</span>
         </div>
 
         <div className={`menu-item ${props.users}`} onClick={() => handleUsers()}>
-          <span>👥</span> <span>Users</span>
+          <i class="fa-solid fa-users"></i> <span>Users</span>
         </div>
-      </nav>
-      <nav className="menu">
-        <div className="menu-item active-menu" onClick={handleLogout}>
-          <i className="fa-solid fa-right-from-bracket"></i>
-          <span>Logout</span>
-        </div>
-      </nav>
 
+      </nav>
     </aside>
   );
 };

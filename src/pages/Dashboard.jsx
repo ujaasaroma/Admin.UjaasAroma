@@ -95,7 +95,8 @@ const Dashboard = () => {
             {loading ? (
               <MoneyCardSkeleton />
             ) : (
-              <div className="money-card">
+              <div className="money-card" onDoubleClick={() => navigate("/users", { state: { userType: "admins" } })}
+              >
                 <div className="money-sub-card">
                   <div className="money-info">
                     <p className="money-title">Admin Users</p>
@@ -114,7 +115,8 @@ const Dashboard = () => {
             {loading ? (
               <MoneyCardSkeleton />
             ) : (
-              <div className="money-card" onClick={() => navigate("/users")}>
+              <div className="money-card" onDoubleClick={() => navigate("/users", { state: { userType: "clients" } })}
+              >
                 <div className="money-sub-card">
                   <div className="money-info">
                     <p className="money-title">Total Users</p>
@@ -133,7 +135,7 @@ const Dashboard = () => {
             {loading ? (
               <MoneyCardSkeleton />
             ) : (
-              <div className="money-card" onClick={() => navigate("/products")}>
+              <div className="money-card" onDoubleClick={() => navigate("/products")}>
                 <div className="money-sub-card">
                   <div className="money-info">
                     <p className="money-title">Total Products</p>
@@ -209,7 +211,7 @@ const Dashboard = () => {
             {loading ? (
               <MoneyCardSkeleton />
             ) : (
-              <div className="money-card">
+              <div className="money-card" onDoubleClick={() => navigate("/queries")}>
                 <div className="money-sub-card">
                   <div className="money-info">
                     <p className="money-title">Customer Queries</p>
@@ -224,6 +226,8 @@ const Dashboard = () => {
                 <p className="money-change">Messages from app</p>
               </div>
             )}
+
+
           </div>
         </section>
       </div>

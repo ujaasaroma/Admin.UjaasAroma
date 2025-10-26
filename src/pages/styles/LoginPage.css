@@ -4,7 +4,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: url('../assets/images/bgImage.avif') 
+  background: url('../../assets/images/bgImage.avif') 
     no-repeat center center/cover;
 }
 
@@ -60,12 +60,15 @@
   padding: 0.8rem;
   margin-bottom: 1rem;
   font-size: 1rem;
+  color: #777;
+  font-family: 'Courier New', Courier, monospace;
+  font-weight: 800;
   outline: none;
   transition: border 0.2s;
 }
 
 .login-input:focus {
-  border-color: #000;
+  border: 5px groove #000;
 }
 
 .remember-row {
@@ -149,13 +152,13 @@ input:checked + .slider:before {
 }
 
 .forgot-text span {
-  color: #ff4d6d;
+  color: #4da9ff;
   font-weight: 600;
   cursor: pointer;
 }
 
 .error-text {
-  color: red;
+  color: ff4d6d;
   margin-bottom: 1rem;
   text-align: center;
 }
