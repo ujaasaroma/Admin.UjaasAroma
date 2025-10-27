@@ -200,12 +200,12 @@ tr:hover {
 
 /* 🌌 Glassy Edit Modal Inspired by Event Registration */
 .glass-form {
-  background: rgba(255, 255, 255, 0.5);
+  background: rgb(255, 255, 255);
   backdrop-filter: blur(20px) saturate(180%);
   /* border: 1px solid rgba(255, 255, 255, 0.15); */
   border-radius: 18px;
   box-shadow: 0 8px 40px rgba(255, 255, 255, 0.4);
-  color: #fff;
+  color: #000;
   padding: 30px 40px;
   max-width: 1000px;
   width: 90%;
@@ -230,7 +230,8 @@ tr:hover {
 /* Icon + Input Group */
 .input-group {
   position: relative;
-  margin-bottom: 18px;
+  margin-bottom: 30px;
+  width: 100%;
 }
 
 .input-group i {
@@ -246,13 +247,14 @@ tr:hover {
 .input-group textarea {
   width: 100%;
   padding: 10px 14px 10px 40px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  /* border-radius: 10px; */
   background: rgba(255, 255, 255, 0.05);
-  color: #000;
+  color: #838181;
   font-size: 14px;
   outline: none;
   transition: 0.3s;
+  
 }
 
 .input-group input:focus,
@@ -266,16 +268,27 @@ tr:hover {
   min-height: 80px;
 }
 
+.input-tootip{
+  position: absolute;
+  top: 40px;
+  left: 0;
+  /* padding: 10px; */
+  /* background-color: #000; */
+  color: red;
+}
+
 /* Two column layout for prices */
 .two-col {
   display: flex;
+  justify-content: space-between;
+  align-items: center;
   gap: 10px;
 }
 
 /* Drop Zone */
 .drop-zone {
-  border: 2px dashed rgba(255, 255, 255, 0.25);
-  border-radius: 12px;
+  border: 2px dashed rgba(0, 0, 0, 0.25);
+  /* border-radius: 12px; */
   padding: 25px;
   text-align: center;
   color: #000;
@@ -286,7 +299,7 @@ tr:hover {
 }
 
 .drop-zone:hover {
-  background: rgba(0, 0, 0, 0.15);
+  background: rgba(0, 0, 0, 0.1);
 }
 
 /* Image grid */
@@ -300,7 +313,7 @@ tr:hover {
 .preview-item img {
   width: 70px;
   height: 70px;
-  border-radius: 10px;
+  /* border-radius: 10px; */
   object-fit: cover;
   border: 1px solid rgba(0, 0, 0, 0.25);
 }
@@ -353,7 +366,7 @@ tr:hover {
 
 .save-btn {
   flex: 1;
-  background: linear-gradient(90deg, #b02121, #ed6d6d);
+  background: #000;
   color: #fff;
   border: none;
   padding: 12px 0;
@@ -365,14 +378,15 @@ tr:hover {
 }
 
 .save-btn:hover {
-  transform: translateY(-2px);
+  transform: translateY(-5px);
   box-shadow: 0 4px 20px rgba(109, 213, 237, 0.4);
+  color: red;
 }
 
 .cancel-btn {
   flex: 1;
-  background: rgba(0, 0, 0, 0.5);
-  color: #fff;
+  background: #eee;
+  color: #000;
   border: none;
   border-top-left-radius: 10px;
   border-bottom-left-radius: 10px;
@@ -383,9 +397,8 @@ tr:hover {
 }
 
 .cancel-btn:hover {
-  transform: translateY(-2px);
-  background: rgba(255, 255, 255, 0.2);
-  color: #000;
+  transform: translateY(-5px);
+  color: red;
 }
 
 /* Smooth entrance */

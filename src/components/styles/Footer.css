@@ -15,7 +15,6 @@
     max-height: 50px;
     transition: all 0.3s ease;
     position: fixed;
-    z-index: 9999999;
     bottom: 0;
 }
 
