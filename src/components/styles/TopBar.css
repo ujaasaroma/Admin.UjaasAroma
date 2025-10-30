@@ -97,7 +97,7 @@
 
 .add-selected-btn {
     position: relative;
-    background-color: rgb(49, 2, 255);
+    background-color: rgba(0, 0, 0, 0.5);
     display: flex;
     align-items: center;
     justify-content: space-between;

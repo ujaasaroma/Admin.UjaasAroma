@@ -160,69 +160,111 @@ export default function Products() {
     const file = e.dataTransfer.files[0];
     if (file) uploadImage(file);
   };
-  const handleFileSelect = (e) => {
-    const file = e.target.files[0];
-    if (file) uploadImage(file);
-  };
 
-  // ✅ Upload function with proper auth + feedback
-  const uploadImage = async (file) => {
-    try {
-      if (!user) {
-        Swal.fire("Unauthorized", "You must be logged in to upload.", "error");
-        return;
-      }
+  const handleFileSelect = async (e) => {
+    const files = Array.from(e.target.files).slice(0, 5);
+    if (!files.length) return;
 
-      const storageRef = ref(storage, `products/${Date.now()}_${file.name}`);
-      const uploadTask = uploadBytesResumable(storageRef, file);
+    const remainingSlots = 5 - (editingProduct.images?.length || 0);
+    const filesToUpload = files.slice(0, remainingSlots);
 
+    await uploadMultipleImages(filesToUpload);
+
+    if (editingProduct.images?.length === 5) {
+      let timerInterval;
       Swal.fire({
-        title: "Uploading...",
-        html: `<div id="upload-progress-text">0%</div>`,
-        allowOutsideClick: false,
-        didOpen: () => Swal.showLoading(),
-        customClass: { popup: "swal-popup-top" },
-      });
-
-      uploadTask.on(
-        "state_changed",
-        (snap) => {
-          const progress = Math.round(
-            (snap.bytesTransferred / snap.totalBytes) * 100
-          );
-          const el = document.getElementById("upload-progress-text");
-          if (el) el.textContent = progress + "%";
-          setUploadProgress(progress);
+        title: "Maximum 5",
+        html: "You are not allowed to upload more than 5 images.",
+        timer: 3000,
+        icon: "error",
+        timerProgressBar: true,
+        didOpen: () => {
+          Swal.showLoading();
+          const timer = Swal.getPopup().querySelector("b");
+          timerInterval = setInterval(() => {
+            timer.textContent = `${Swal.getTimerLeft()}`;
+          }, 100);
         },
-        (error) => {
-          Swal.close();
-          if (error.code === "storage/unauthorized") {
-            Swal.fire(
-              "Permission Denied",
-              "Your account is not authorized to upload product images.",
-              "error"
-            );
-          } else {
-            Swal.fire("Error", "Upload failed.", "error");
-          }
-        },
-        async () => {
-          const url = await getDownloadURL(uploadTask.snapshot.ref);
-          setEditingProduct((prev) => ({
-            ...prev,
-            images: [...(prev.images || []), url],
-          }));
-          setUploadProgress(0);
-          Swal.close();
-          Swal.fire("Success", "Image uploaded!", "success");
+        willClose: () => {
+          clearInterval(timerInterval);
         }
-      );
-    } catch (err) {
-      console.error(err);
-      Swal.close();
-      Swal.fire("Error", "Upload failed.", "error");
+      }).then((result) => {
+        /* Read more about handling dismissals below */
+        if (result.dismiss === Swal.DismissReason.timer) {
+          console.log("I was closed by the timer");
+        }
+      });
     }
   };
+
+
+  // ✅ Upload function with proper auth + feedback
+  const uploadMultipleImages = async (files) => {
+    if (!user) {
+      Swal.fire("Unauthorized", "You must be logged in to upload.", "error");
+      return;
+    }
+
+    // Show one global progress modal
+    Swal.fire({
+      title: "Uploading images...",
+      html: `<div id="upload-progress-text">0%</div>`,
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading(),
+      customClass: { popup: "swal-popup-top" },
+    });
+
+    try {
+      let completed = 0;
+      const total = files.length;
+      const uploadedUrls = [];
+
+      // Upload each file sequentially (or you can parallelize if you prefer)
+      for (const file of files) {
+        const storageRef = ref(storage, `products/${Date.now()}_${file.name}`);
+        const uploadTask = uploadBytesResumable(storageRef, file);
+
+        await new Promise((resolve, reject) => {
+          uploadTask.on(
+            "state_changed",
+            (snap) => {
+              const singleProgress = Math.round(
+                (snap.bytesTransferred / snap.totalBytes) * 100
+              );
+              const overallProgress = Math.round(
+                ((completed + singleProgress / 100) / total) * 100
+              );
+              const el = document.getElementById("upload-progress-text");
+              if (el) el.textContent = `${overallProgress}%`;
+              setUploadProgress(overallProgress);
+            },
+            (error) => reject(error),
+            async () => {
+              const url = await getDownloadURL(uploadTask.snapshot.ref);
+              uploadedUrls.push(url);
+              completed++;
+              resolve();
+            }
+          );
+        });
+      }
+
+      // Add all new URLs to state together
+      setEditingProduct((prev) => ({
+        ...prev,
+        images: [...(prev.images || []), ...uploadedUrls],
+      }));
+
+      setUploadProgress(0);
+      Swal.close();
+      Swal.fire("✅ Upload Complete", `${uploadedUrls.length} image(s) uploaded successfully.`, "success");
+    } catch (error) {
+      console.error(error);
+      Swal.close();
+      Swal.fire("Error", "Some uploads failed.", "error");
+    }
+  };
+
 
   const handleImageDelete = async (url) => {
     const result = await Swal.fire({
@@ -423,16 +465,17 @@ export default function Products() {
       {editingProduct && (
         <div className="modal-overlay" onClick={() => setEditingProduct(null)}>
           <div
-            className="edit-modal-container glass-form"
+            className="glass-form"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2>Product Editor</h2>
-            <p>Update your product details below</p>
-
+            <div>
+              <h2>Product Editor</h2>
+              <p>Update your product details below</p>
+            </div>
             <div className="edit-modal-grid">
               {/* Title */}
-              <div className="two-col">
-                <div className="input-tootip">
+              <div className="left-col">
+                <div className="input-tooltip">
                   <div className="input-group" onMouseEnter={() => setToolTip("Title")} onMouseLeave={() => setToolTip(null)}>
                     <i className="fa-solid fa-box"></i>
                     <input
@@ -449,7 +492,7 @@ export default function Products() {
                   )}
                 </div>
                 {/* Subtitle */}
-                <div className="input-tootip">
+                <div className="input-tooltip">
                   <div className="input-group" onMouseEnter={() => setToolTip("Subtitle")} onMouseLeave={() => setToolTip(null)}>
                     <i className="fa-solid fa-pen-to-square"></i>
                     <input
@@ -465,31 +508,66 @@ export default function Products() {
                     <small>Enter subtitle here</small>
                   )}
                 </div>
-              </div>
-              {/* Description */}
-              <div className="input-tootip" style={{ height: '140px' }}>
-                <div className="input-group" onMouseEnter={() => setToolTip("Description")} onMouseLeave={() => setToolTip(null)}>
-                  <i className="fa-solid fa-align-left"></i>
-                  <textarea
-                    rows={7}
-                    style={{ resize: 'none' }}
-                    placeholder="Description"
-                    value={editingProduct.description}
-                    onChange={(e) =>
-                      setEditingProduct({
-                        ...editingProduct,
-                        description: e.target.value,
-                      })
-                    }
-                  />
+                {/* Description */}
+                <div className="input-tooltip" style={{ height: '140px' }}>
+                  <div className="input-group" onMouseEnter={() => setToolTip("Description")} onMouseLeave={() => setToolTip(null)}>
+                    <i className="fa-solid fa-align-left"></i>
+                    <textarea
+                      rows={7}
+                      style={{ resize: 'none' }}
+                      placeholder="Description"
+                      value={editingProduct.description}
+                      onChange={(e) =>
+                        setEditingProduct({
+                          ...editingProduct,
+                          description: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                  {toolTip === "Description" && (
+                    <small>Enter description here</small>
+                  )}
                 </div>
-                {toolTip === "Description" && (
-                  <small>Enter description here</small>
-                )}
+
+                {/* Drop Zone */}
+                <div
+                  className="drop-zone"
+                  ref={dropRef}
+                  onClick={openFilePicker}
+                  onDrop={handleFileDrop}
+                  onDragOver={handleDragOver}
+                >
+                  <p>📁 Drag & drop product images or click to upload</p>
+                  <p>You can upload maximum of 5 files only..</p>
+                  <input type="file" accept="image/*" multiple onChange={handleFileSelect} hidden />
+                  {uploadProgress > 0 && (
+                    <div className="progress-bar">
+                      <div className="progress" style={{ width: `${uploadProgress}%` }} />
+                    </div>
+                  )}
+                </div>
+
+                {/* Image Grid with Drag */}
+                <div className="image-preview-grid">
+                  {editingProduct.images?.map((img, i) => (
+                    <div
+                      key={i}
+                      className="preview-item"
+                      draggable
+                      onDragStart={() => handleDragStart(i)}
+                      onDragEnter={() => handleDragEnter(i)}
+                      onDragEnd={handleDragEnd}
+                    >
+                      <img src={img} alt={`img-${i}`} />
+                      <button onClick={() => handleImageDelete(img)}>✖</button>
+                    </div>
+                  ))}
+                </div>
               </div>
-              {/* Price & Discount */}
-              <div className="two-col" style={{ marginTop: 30 }}>
-                <div className="input-tootip">
+              <div className="right-col">
+                {/* Price & Discount */}
+                <div className="input-tooltip">
                   <div className="input-group" onMouseEnter={() => setToolTip("Actual Price")} onMouseLeave={() => setToolTip(null)}>
                     <i className="fa-solid fa-dollar-sign"></i>
                     <input
@@ -508,7 +586,7 @@ export default function Products() {
                     <small>Enter actual price here</small>
                   )}
                 </div>
-                <div className="input-tootip">
+                <div className="input-tooltip">
                   <div className="input-group" onMouseEnter={() => setToolTip("Discounted Price")} onMouseLeave={() => setToolTip(null)}>
                     <i className="fa-solid fa-dollar-sign"></i>
                     <input
@@ -527,84 +605,48 @@ export default function Products() {
                     <small>Enter discounted price here</small>
                   )}
                 </div>
-              </div>
-
-              {/* Ribbon */}
-              <div className="input-tootip">
-                <div className="input-group" onMouseEnter={() => setToolTip("Ribbon")} onMouseLeave={() => setToolTip(null)}>
-                  <i className="fa-solid fa-ribbon"></i>
-                  <input
-                    type="text"
-                    placeholder="Ribbon (e.g. New, Sale)"
-                    value={editingProduct.ribbon}
-                    onChange={(e) =>
-                      setEditingProduct({ ...editingProduct, ribbon: e.target.value })
-                    }
-                  />
-                </div>
-                {toolTip === "Ribbon" && (
-                  <small>Enter Ribbon here. If product is not in stock please write Out of Stock.</small>
-                )}
-              </div>
-
-              {/* Weight */}
-              <div className="input-tootip" style={{ marginBottom: 30 }}>
-                <div className="input-group" onMouseEnter={() => setToolTip("Weight")} onMouseLeave={() => setToolTip(null)}>
-                  <i className="fa-solid fa-weight-hanging"></i>
-                  <input
-                    type="text"
-                    placeholder="Weight (g)"
-                    value={editingProduct.weight}
-                    onChange={(e) =>
-                      setEditingProduct({ ...editingProduct, weight: e.target.value })
-                    }
-                  />
-                </div>
-                {toolTip === "Weight" && (
-                  <small>Enter product weight here in gms.</small>
-                )}
-              </div>
-
-              {/* Drop Zone */}
-              <div
-                className="drop-zone"
-                ref={dropRef}
-                onClick={openFilePicker}
-                onDrop={handleFileDrop}
-                onDragOver={handleDragOver}
-              >
-                <p>📁 Drag & drop product images or click to upload</p>
-                <input type="file" accept="image/*" multiple onChange={handleFileSelect} hidden />
-                {uploadProgress > 0 && (
-                  <div className="progress-bar">
-                    <div className="progress" style={{ width: `${uploadProgress}%` }} />
+                {/* Ribbon */}
+                <div className="input-tooltip">
+                  <div className="input-group" onMouseEnter={() => setToolTip("Ribbon")} onMouseLeave={() => setToolTip(null)}>
+                    <i className="fa-solid fa-ribbon"></i>
+                    <input
+                      type="text"
+                      placeholder="Ribbon (e.g. New, Sale)"
+                      value={editingProduct.ribbon}
+                      onChange={(e) =>
+                        setEditingProduct({ ...editingProduct, ribbon: e.target.value })
+                      }
+                    />
                   </div>
-                )}
-              </div>
-
-              {/* Image Grid with Drag */}
-              <div className="image-preview-grid">
-                {editingProduct.images?.map((img, i) => (
-                  <div
-                    key={i}
-                    className="preview-item"
-                    draggable
-                    onDragStart={() => handleDragStart(i)}
-                    onDragEnter={() => handleDragEnter(i)}
-                    onDragEnd={handleDragEnd}
-                  >
-                    <img src={img} alt={`img-${i}`} />
-                    <button onClick={() => handleImageDelete(img)}>✖</button>
+                  {toolTip === "Ribbon" && (
+                    <small>Enter Ribbon here. If product is not in stock please write Out of Stock.</small>
+                  )}
+                </div>
+                {/* Weight */}
+                <div className="input-tooltip" style={{ marginBottom: 30 }}>
+                  <div className="input-group" onMouseEnter={() => setToolTip("Weight")} onMouseLeave={() => setToolTip(null)}>
+                    <i className="fa-solid fa-weight-hanging"></i>
+                    <input
+                      type="text"
+                      placeholder="Weight (g)"
+                      value={editingProduct.weight}
+                      onChange={(e) =>
+                        setEditingProduct({ ...editingProduct, weight: e.target.value })
+                      }
+                    />
                   </div>
-                ))}
+                  {toolTip === "Weight" && (
+                    <small>Enter product weight here in gms.</small>
+                  )}
+                </div>
               </div>
             </div>
 
             <div className="edit-actions">
-              <button className="save-btn" onClick={handleEditSave}>
+              <button className="save-btn-edit" onClick={handleEditSave}>
                 💾 Save Changes
               </button>
-              <button className="cancel-btn" onClick={() => setEditingProduct(null)}>
+              <button className="cancel-btn-edit" onClick={() => setEditingProduct(null)}>
                 ✖ Cancel
               </button>
             </div>

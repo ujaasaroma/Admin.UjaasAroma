@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { signInWithEmailAndPassword } from 'firebase/auth';
@@ -17,6 +17,13 @@ function LoginPage() {
   const [rememberMe, setRememberMe] = useState(false);
 
   const validateEmail = (value) => /\S+@\S+\.\S+/.test(value);
+  const user = useSelector((state) => state.auth.user);
+
+  useEffect(() => {
+    if (user) {
+      navigate("/dashboard");
+    }
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

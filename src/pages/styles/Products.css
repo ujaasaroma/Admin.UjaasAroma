@@ -160,7 +160,7 @@ tr:hover {
 
 /* 🌌 Glassy Edit Modal Inspired by Event Registration */
 .glass-form {
-  background: rgb(255, 255, 255);
+  /* background: rgb(255, 255, 255); */
   backdrop-filter: blur(20px) saturate(180%);
   /* border: 1px solid rgba(255, 255, 255, 0.15); */
   border-radius: 18px;
@@ -170,19 +170,24 @@ tr:hover {
   max-width: 1000px;
   width: 90%;
   animation: fadeIn 0.4s ease;
+  height: 90%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+
 }
 
 .glass-form h2 {
   text-align: center;
   font-size: 22px;
   font-weight: 600;
-  color: #000;
+  color: #fff;
   margin-bottom: 5px;
 }
 
 .glass-form p {
   text-align: center;
-  color: #000;
+  color: #fff;
   font-size: 13px;
   margin-bottom: 25px;
 }
@@ -198,7 +203,7 @@ tr:hover {
   top: 50%;
   left: 14px;
   transform: translateY(-50%);
-  color: #000;
+  color: #fff;
   font-size: 15px;
 }
 
@@ -206,28 +211,40 @@ tr:hover {
 .input-group textarea {
   width: 100%;
   padding: 10px 14px 10px 40px;
-  border: 1px solid rgba(0, 0, 0, 0.2);
-  /* border-radius: 10px; */
+  border: 1px solid rgba(255, 255, 255, 0.8);
   background: rgba(255, 255, 255, 0.05);
-  color: #838181;
+  color: #fff;
   font-size: 14px;
   outline: none;
   transition: 0.3s;
-
 }
 
 .input-group input:focus,
 .input-group textarea:focus {
-  border-color: #4ac1f7;
-  background: rgba(0, 0, 0, 0.1);
+  /* border-color: #4ac1f7; */
+  background: rgba(0, 0, 0, 0.9);
+  box-shadow: 0 4px 20px rgba(109, 213, 237, 0.9);
 }
+
+.input-group input:hover,
+.input-group textarea:hover {
+  /* border-color: #4ac1f7; */
+  background: rgba(0, 0, 0, 0.9);
+  box-shadow: 0 4px 20px rgba(109, 213, 237, 0.9);
+}
+
+.input-group input::placeholder,
+.input-group textarea::placeholder {
+  color: #d39729;
+}
+
 
 .input-group textarea {
   resize: vertical;
   min-height: 80px;
 }
 
-.input-tootip {
+.input-tooltip {
   margin-bottom: 10px;
   color: red;
   width: 100%;
@@ -238,29 +255,54 @@ tr:hover {
 
 }
 
-/* Two column layout for prices */
-.two-col {
+.edit-modal-grid {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  gap: 10px;
+  align-items: flex-start;
+  column-gap: 10px;
+  height: 100%;
+}
+
+/* Two column layout for prices */
+.left-col {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  width: 65%;
+  height: 100%;
+}
+
+.right-col {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  width: 30%;
+  height: 100%;
 }
 
 /* Drop Zone */
 .drop-zone {
-  border: 2px dashed rgba(0, 0, 0, 0.25);
-  /* border-radius: 12px; */
-  padding: 25px;
-  text-align: center;
+  border: 2px dashed rgba(255, 255, 255, 0.8);
+  padding-top: 15px;
   color: #000;
   font-size: 14px;
   background: rgba(255, 255, 255, 0.05);
   transition: 0.25s;
   cursor: pointer;
+  width: 100%;
+  height: 150px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  margin: 20px 0;
 }
 
 .drop-zone:hover {
-  background: rgba(0, 0, 0, 0.1);
+  background: rgba(0, 0, 0, 0.9);
+  box-shadow: 0 4px 20px rgba(109, 213, 237, 0.9);
 }
 
 /* Image grid */
@@ -268,13 +310,14 @@ tr:hover {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  margin-top: 15px;
+  cursor: all-scroll;
+  margin-top: 20px;
 }
 
 .preview-item img {
-  width: 70px;
-  height: 70px;
-  /* border-radius: 10px; */
+  width: 100px;
+  height: 100px;
+  margin-left: 10px;
   object-fit: contain;
   border: 1px solid rgba(0, 0, 0, 0.25);
 }
@@ -325,9 +368,9 @@ tr:hover {
   margin-top: 25px;
 }
 
-.save-btn {
+.save-btn-edit {
   flex: 1;
-  background: #000;
+  background: rgba(0, 0, 0, 0.1);
   color: #fff;
   border: none;
   padding: 12px 0;
@@ -338,15 +381,15 @@ tr:hover {
   transition: 0.3s;
 }
 
-.save-btn:hover {
+.save-btn-edit:hover {
   transform: translateY(-5px);
-  box-shadow: 0 4px 20px rgba(109, 213, 237, 0.4);
+  box-shadow: 0 4px 20px rgba(109, 213, 237, 0.9);
   color: red;
 }
 
-.cancel-btn {
+.cancel-btn-edit {
   flex: 1;
-  background: #eee;
+  background: rgba(238, 238, 238, 0.1);
   color: #000;
   border: none;
   border-top-left-radius: 10px;
@@ -357,8 +400,9 @@ tr:hover {
   transition: 0.3s;
 }
 
-.cancel-btn:hover {
+.cancel-btn-edit:hover {
   transform: translateY(-5px);
+  box-shadow: 0 4px 20px rgba(109, 213, 237, 0.9);
   color: red;
 }
 

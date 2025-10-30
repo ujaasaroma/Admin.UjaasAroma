@@ -9,7 +9,6 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ProtectedRoute from './ProtectedRoute';
 import CustomerQueries from "./pages/CustomerQueries"
 import { SidebarProvider } from "./context/SidebarContext";
-import AddProduct from './pages/AddProduct';
 
 function App() {
 
@@ -22,7 +21,6 @@ function App() {
         <Route path="/products" element={<ProtectedRoute><Products /></ProtectedRoute>} />
         <Route path="/users" element={<ProtectedRoute><Users /></ProtectedRoute>} />
         <Route path="/queries" element={<ProtectedRoute><CustomerQueries /></ProtectedRoute>} />
-        <Route path="/products-add" element={<ProtectedRoute><AddProduct /></ProtectedRoute>} />
       </Routes>
     </SidebarProvider>
   )
