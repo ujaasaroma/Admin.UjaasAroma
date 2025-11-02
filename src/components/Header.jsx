@@ -13,21 +13,26 @@ import "./styles/header.css";
 
 const Header = ({ toggleSidebar }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [isMenuOpen, setIsMenuOpen] = useState(false); // ✅ Track sidebar state
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const dropdownRef = useRef(null);
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
   // 🔥 Grab user info from Redux store
   const user = useSelector((state) => state.auth.user);
-  const username = user?.name || user?.email || "Guest";
+  
+  // ✅ Use name from Firestore, fallback to email
+  const username = user?.name || user?.displayName || user?.email || "Guest";
+  
+  // ✅ Use photoURL from Firestore if available
+  const userPhoto = user?.photoURL || profilePicture;
 
   const toggleDropdown = () => setIsDropdownOpen((prev) => !prev);
 
   // ✅ Toggle both sidebar + icon state
   const handleMenuClick = () => {
-    toggleSidebar(); // parent sidebar toggle
-    setIsMenuOpen((prev) => !prev); // icon swap
+    toggleSidebar();
+    setIsMenuOpen((prev) => !prev);
   };
 
   // Close dropdown when clicking outside
@@ -54,10 +59,9 @@ const Header = ({ toggleSidebar }) => {
 
   return (
     <header className="topbar">
-      {/* ✅ Toggle menu button */}
       <button className="mobile-menu-btn" onClick={handleMenuClick}>
         <img
-          src={isMenuOpen ? cross : hamburgerMenu} // dynamically switch icon
+          src={isMenuOpen ? cross : hamburgerMenu}
           alt="menu-toggle"
           className="mobile-menu"
         />
@@ -69,7 +73,7 @@ const Header = ({ toggleSidebar }) => {
 
       <div className="profiler" ref={dropdownRef}>
         <img
-          src={profilePicture}
+          src={userPhoto}
           alt="User"
           className="profile-img"
           onClick={toggleDropdown}

@@ -36,14 +36,6 @@ const Sidebar = (props) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const toggleOrders = () => {
-    if (collapsed) {
-      // when collapsed, open popover instead
-      setShowPopover((prev) => !prev);
-    } else {
-      setOpenOrders((prev) => !prev);
-    }
-  };
 
   const toggleCollapse = () => setCollapsed((prev) => !prev);
 
@@ -57,6 +49,11 @@ const Sidebar = (props) => {
     navigate("/products");
   };
 
+  const handleOrders = () => {
+    setStatus(2);
+    navigate("/orders");
+  };
+
   const handleCustomerQueries = () => {
     setStatus(3);
     navigate("/queries");
@@ -65,18 +62,6 @@ const Sidebar = (props) => {
   const handleUsers = () => {
     setStatus(4);
     navigate("/users");
-  };
-
-  const handleSuccessOrders = () => {
-    setStatus(2.1);
-    navigate("/orders/success");
-    setShowPopover(false);
-  };
-
-  const handleFailedOrders = () => {
-    setStatus(2.2);
-    navigate("/orders/failed");
-    setShowPopover(false);
   };
 
   return (
@@ -96,80 +81,60 @@ const Sidebar = (props) => {
         {/* Dashboard */}
         <div
           className={`menu-item ${props.dashboard}`}
+          style={{ flexDirection: collapsed ? 'column' : 'row' }}
           data-title="Dashboard"
           onClick={handleDashboard}
         >
           <i className="fa-solid fa-house-user"></i>
+          {collapsed && <small>Dashboard</small>}
           {!collapsed && <span>Dashboard</span>}
         </div>
 
         {/* Products */}
         <div
           className={`menu-item ${props.products}`}
+          style={{ flexDirection: collapsed ? 'column' : 'row' }}
           data-title="Products"
           onClick={handleProducts}
         >
           <i className="fa-solid fa-folder-closed"></i>
+          {collapsed && <small>Products</small>}
           {!collapsed && <span>Products</span>}
         </div>
 
         {/* Orders */}
         <div
-          className={`menu-item ${openOrders ? "open" : ""}`}
+          className={`menu-item ${props.orders}`}
+          style={{ flexDirection: collapsed ? 'column' : 'row' }}
           data-title="Orders"
-          onClick={toggleOrders}
+          onClick={handleOrders}
         >
           <i className="fa-solid fa-list"></i>
-          {!collapsed && <span>Orders ▾</span>}
+          {collapsed && <small>Orders</small>}
+          {!collapsed && <span>Orders</span>}
         </div>
-
-        {/* Submenu when expanded */}
-        {!collapsed && openOrders && (
-          <div className="submenu">
-            <div
-              className={`submenu-item ${status === 2.1 ? "active" : ""
-                }`}
-              data-title="Success Orders"
-              onClick={handleSuccessOrders}
-            >
-              <i
-                className="fa-solid fa-check"
-                style={{ color: "green", fontSize: 15, width: 20 }}
-              ></i>
-              <span>Success Orders</span>
-            </div>
-            <div
-              className={`submenu-item ${status === 2.2 ? "active" : ""
-                }`}
-              data-title="Failed Orders"
-              onClick={handleFailedOrders}
-            >
-              <i
-                className="fa-solid fa-xmark"
-                style={{ color: "red", fontSize: 17, width: 20 }}
-              ></i>
-              <span>Failed Orders</span>
-            </div>
-          </div>
-        )}
 
         {/* Customer Queries */}
         <div
           className={`menu-item ${props.customerQueries}`}
+          style={{ flexDirection: collapsed ? 'column' : 'row' }}
           data-title="Customer Queries"
           onClick={handleCustomerQueries}
         >
           <i className="fa-solid fa-calendar-days"></i>
+          {collapsed && <small>Queries</small>}
           {!collapsed && <span>Customer Queries</span>}
         </div>
 
         {/* Users */}
         <div
           className={`menu-item ${props.users}`}
+          style={{ flexDirection: collapsed ? 'column' : 'row' }}
           data-title="Users"
           onClick={handleUsers}
         >
           <i className="fa-solid fa-users"></i>
+          {collapsed && <small>Users</small>}
           {!collapsed && <span>Users</span>}
         </div>
       </nav>

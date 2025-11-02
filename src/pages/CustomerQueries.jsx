@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from "react";
-import { collection, query, orderBy, onSnapshot, doc, updateDoc } from "firebase/firestore";
+import React, { useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
 import { db } from "../config/firebase";
 import "./styles/Products.css";
 import "./styles/CustomerQueries.css";
@@ -11,21 +12,34 @@ import { useSidebar } from "../context/SidebarContext";
 import Swal from "sweetalert2";
 import Details from "../assets/icons/details.png";
 import TopBar from "../components/TopBar";
+import {
+  setQueries,
+  setSearch,
+  setSort,
+  toggleSelect,
+  toggleSelectAll,
+  setSelectedQuery,
+  deleteQueries,
+} from "../features/queriesSlice";
+import { toggleSidebar as toggleSidebarAction } from "../features/uiSlice";
 
 export default function CustomerQueries() {
-  const [isOpen, setIsOpen] = useState(false);
-  const [queries, setQueries] = useState([]);
-  const [selectedIds, setSelectedIds] = useState([]); // ✅ Track selected IDs
-  const [selectAll, setSelectAll] = useState(false); // ✅ Track header checkbox
-  const [search, setSearch] = useState("");
-  const [sort, setSort] = useState("Most Recent");
-  const [loading, setLoading] = useState(true);
-  const [selectedQuery, setSelectedQuery] = useState(null);
+  const dispatch = useDispatch();
   const { collapsed } = useSidebar();
 
-  const toggleSidebar = () => setIsOpen(!isOpen);
+  // Redux state
+  const {
+    queries,
+    loading,
+    search,
+    sort,
+    selectedIds,
+    selectAll,
+    selectedQuery,
+  } = useSelector((state) => state.queries);
+  const { isOpen } = useSelector((state) => state.ui);
 
-  // 🔥 Fetch Queries
+  // 🔥 Fetch Queries with real-time listener
   useEffect(() => {
     const q = query(
       collection(db, "mobileAppContactFormQueries"),
@@ -62,32 +76,13 @@ export default function CustomerQueries() {
         };
       });
 
-      // filter out deleted ones before setting state
-      setQueries(queryList.filter((q) => q.deleted !== 1));
-      setLoading(false);
+      // Filter out deleted ones before setting state
+      dispatch(setQueries(queryList.filter((q) => q.deleted !== 1)));
     });
 
     // Cleanup listener on unmount
     return () => unsubscribe();
-  }, []);
-
-
-  // ✅ Handle individual selection
-  const toggleSelect = (id) => {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    );
-  };
-
-  // ✅ Handle select all
-  const toggleSelectAll = () => {
-    if (selectAll) {
-      setSelectedIds([]);
-    } else {
-      setSelectedIds(filtered.map((q) => q.id));
-    }
-    setSelectAll(!selectAll);
-  };
+  }, [dispatch]);
 
   // ✅ Handle delete (single or multiple)
   const handleDelete = async (ids) => {
@@ -107,41 +102,44 @@ export default function CustomerQueries() {
     });
 
     if (result.isConfirmed) {
-      try {
-        for (const id of ids) {
-          await updateDoc(doc(db, "mobileAppContactFormQueries", id), { deleted: 1 });
-        }
-
-        setQueries((prev) => prev.filter((q) => !ids.includes(q.id)));
-        setSelectedIds([]);
-        setSelectAll(false);
-
-        Swal.fire("Deleted!", "Selected queries were deleted.", "success");
-      } catch (error) {
-        console.error("Error deleting queries:", error);
-        Swal.fire("Error", "Failed to delete queries.", "error");
-      }
+      dispatch(deleteQueries(ids));
     }
   };
 
   // ✅ Handle single view
-  const handleView = (query) => setSelectedQuery(query);
-  const closeModal = () => setSelectedQuery(null);
+  const handleView = (query) => dispatch(setSelectedQuery(query));
+  const closeModal = () => dispatch(setSelectedQuery(null));
 
   // 🔍 Filter + Sort
   const filtered = queries
-    .filter((q) =>
-      [q.name, q.email, q.phone]
-        .some((val) =>
-          val.toLowerCase().includes(search.toLowerCase().trim())
-        )
-    )
+    .filter((q) => {
+      try {
+        const name = (q?.name || "").toString().toLowerCase();
+        const email = (q?.email || "").toString().toLowerCase();
+        const phone = (q?.phone || "").toString().toLowerCase();
+        const searchText = (search || "").toLowerCase().trim();
+
+        return (
+          name.includes(searchText) ||
+          email.includes(searchText) ||
+          phone.includes(searchText)
+        );
+      } catch (error) {
+        console.error("Filter error for query:", q, error);
+        return false;
+      }
+    })
     .sort((a, b) => {
-      switch (sort) {
-        case "Oldest First":
-          return new Date(a.createdAt) - new Date(b.createdAt);
-        default:
-          return new Date(b.createdAt) - new Date(a.createdAt);
+      try {
+        switch (sort) {
+          case "Oldest First":
+            return new Date(a?.createdAt || 0) - new Date(b?.createdAt || 0);
+          default:
+            return new Date(b?.createdAt || 0) - new Date(a?.createdAt || 0);
+        }
+      } catch (error) {
+        console.error("Sort error:", error);
+        return 0;
       }
     });
 
@@ -160,7 +158,7 @@ export default function CustomerQueries() {
 
   return (
     <div className="products-container">
-      <Header toggleSidebar={toggleSidebar} />
+      <Header toggleSidebar={() => dispatch(toggleSidebarAction())} />
       <Sidebar
         barStatus={isOpen ? "active-menu" : "inactive-menu"}
         customerQueries="active"
@@ -170,9 +168,9 @@ export default function CustomerQueries() {
         <div className="tables-section">
           <TopBar
             search={search}
-            inpchange={(e) => setSearch(e.target.value)}
+            inpchange={(e) => dispatch(setSearch(e.target.value))}
             sort={sort}
-            selchange={(e) => setSort(e.target.value)}
+            selchange={(e) => dispatch(setSort(e.target.value))}
             delete={() => handleDelete(selectedIds)}
             length={selectedIds.length}
             addwidth="20%"
@@ -180,48 +178,66 @@ export default function CustomerQueries() {
             data={selectedIds.length}
             display="none"
             page="queries"
+            searchBy="🔍 Search by name, email, or phone..."
           />
-          <table className="product-table">
-            <thead>
-              <tr>
-                <th>
-                  <input
-                    type="checkbox"
-                    checked={selectAll}
-                    onChange={toggleSelectAll}
-                  />
-                </th>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Phone</th>
-                <th>Received At</th>
-                <th style={{ textAlign: 'center' }}>Actions</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {filtered.map((q) => (
-                <tr key={q.id}>
-                  <td>
+          <div className="orders-table-container">
+            <table className="orders-table">
+              <thead>
+                <tr>
+                  <th>
                     <input
                       type="checkbox"
-                      checked={selectedIds.includes(q.id)}
-                      onChange={() => toggleSelect(q.id)}
+                      checked={selectAll}
+                      onChange={() =>
+                        dispatch(toggleSelectAll(filtered.map((q) => q.id)))
+                      }
                     />
-                  </td>
-                  <td>{q.name}</td>
-                  <td>{q.email}</td>
-                  <td>{q.phone}</td>
-                  <td>{q.createdAt}</td>
-                  <td style={{ textAlign: 'center' }}>
-                    <button onClick={() => handleView(q)} className="query-view-btn">
-                      <img src={Details} alt="👁️" />
-                    </button>
-                  </td>
+                  </th>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Phone</th>
+                  <th>Received At</th>
+                  <th style={{ textAlign: "center" }}>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+
+              <tbody>
+                {filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan="10" className="no-orders">
+                      No matching item found..
+                    </td>
+                  </tr>
+                ) : (<>
+
+                  {filtered.map((q) => (
+                    <tr key={q.id}>
+                      <td>
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.includes(q.id)}
+                          onChange={() => dispatch(toggleSelect(q.id))}
+                        />
+                      </td>
+                      <td>{q.name}</td>
+                      <td>{q.email}</td>
+                      <td>{q.phone}</td>
+                      <td>{q.createdAt}</td>
+                      <td style={{ textAlign: "center" }}>
+                        <button
+                          onClick={() => handleView(q)}
+                          className="query-view-btn"
+                        >
+                          <img src={Details} alt="👁️" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </section>
 
@@ -230,10 +246,7 @@ export default function CustomerQueries() {
       {/* 💬 Modal for Full Query */}
       {selectedQuery && (
         <div className="modal-overlay" onClick={closeModal}>
-          <div
-            className="modal-content"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="section-top">
               <h2>Customer Query</h2>
             </div>
@@ -243,19 +256,27 @@ export default function CustomerQueries() {
                 <table className="query-details-table">
                   <tbody>
                     <tr>
-                      <td><strong>Name:</strong></td>
+                      <td>
+                        <strong>Name:</strong>
+                      </td>
                       <td>{selectedQuery.name}</td>
                     </tr>
                     <tr>
-                      <td><strong>Email:</strong></td>
+                      <td>
+                        <strong>Email:</strong>
+                      </td>
                       <td>{selectedQuery.email}</td>
                     </tr>
                     <tr>
-                      <td><strong>Phone:</strong></td>
+                      <td>
+                        <strong>Phone:</strong>
+                      </td>
                       <td>{selectedQuery.phone}</td>
                     </tr>
                     <tr>
-                      <td><strong>Received At:</strong></td>
+                      <td>
+                        <strong>Received At:</strong>
+                      </td>
                       <td>{selectedQuery.createdAt}</td>
                     </tr>
                   </tbody>

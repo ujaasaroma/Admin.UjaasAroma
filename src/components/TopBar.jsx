@@ -13,7 +13,7 @@ const TopBar = (props) => {
                 </button>
                 <input
                     type="text"
-                    placeholder="🔍 Search by name, email, or phone..."
+                    placeholder={props.searchBy}
                     value={props.search}
                     onChange={props.inpchange}
                 />
@@ -37,7 +37,22 @@ const TopBar = (props) => {
                         <option>Price Highest First</option>
                     </select>
                 </>
-
+                )}
+                {props.page === "users" && (
+                    <>
+                        <select value={props.filter} onChange={props.filchange}>
+                            <option>All</option>
+                            <option>Admins</option>
+                            <option>Clients</option>
+                        </select>
+                        <select value={props.sort} onChange={props.selchange}>
+                            <option>Most Relevant</option>
+                            <option>Name A-Z</option>
+                            <option>Name Z-A</option>
+                            <option>Newest First</option>
+                            <option>Oldest First</option>
+                        </select>
+                    </>
                 )}
 
                 {props.data > 0 && (

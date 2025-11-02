@@ -1,20 +1,12 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useRef } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import {
   collection,
   query,
   orderBy,
   onSnapshot,
-  doc,
-  updateDoc,
-  serverTimestamp,
 } from "firebase/firestore";
-import {
-  ref,
-  uploadBytesResumable,
-  getDownloadURL,
-  deleteObject,
-} from "firebase/storage";
-import { db, storage, auth } from "../config/firebase"; // ✅ make sure these are from same app
+import { db, auth } from "../config/firebase";
 import "./styles/Products.css";
 import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
@@ -23,38 +15,81 @@ import ProductSkeleton from "../components/ProductSkeleton";
 import { useSidebar } from "../context/SidebarContext";
 import Swal from "sweetalert2";
 import Edit from "../assets/icons/edit.png";
-import { getAuth, onAuthStateChanged } from "firebase/auth";
+import { onAuthStateChanged } from "firebase/auth";
 import TopBar from "../components/TopBar";
 import { useNavigate } from "react-router-dom";
+import {
+  setProducts,
+  setSearch,
+  setFilter,
+  setSort,
+  toggleSelect,
+  toggleSelectAll,
+  setEditingProduct,
+  setAddingProduct,
+  updateEditingProduct,
+  updateAddingProduct,
+  setHovered,
+  setToolTip,
+  setDraggingIndex,
+  reorderImages,
+  addImagesToProduct,
+  removeImageFromProduct,
+  addProduct,
+  updateProduct,
+  deleteProducts,
+  uploadImages,
+  deleteImage,
+} from "../features/productsSlice";
+import { loginSuccess, logout } from "../features/authSlice";
+import { toggleSidebar as toggleSidebarAction } from "../features/uiSlice";
 
 export default function Products() {
   const navigate = useNavigate();
-  const [isOpen, setIsOpen] = useState(false);
-  const [products, setProducts] = useState([]);
-  const [hovered, setHovered] = useState(null);
-  const [toolTip, setToolTip] = useState(null);
-  const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState("All");
-  const [sort, setSort] = useState("Most Relevant");
-  const [loading, setLoading] = useState(true);
-  const [selectedIds, setSelectedIds] = useState([]);
-  const [selectAll, setSelectAll] = useState(false);
-  const [editingProduct, setEditingProduct] = useState(null);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [draggingIndex, setDraggingIndex] = useState(null);
-  const [user, setUser] = useState(null); // ✅ Track signed-in user
+  const dispatch = useDispatch();
   const dropRef = useRef();
   const { collapsed } = useSidebar();
 
+  // Redux state
+  const {
+    products,
+    loading,
+    search,
+    filter,
+    sort,
+    selectedIds,
+    selectAll,
+    editingProduct,
+    addingProduct,
+    hovered,
+    toolTip,
+    uploadProgress,
+    draggingIndex,
+  } = useSelector((state) => state.products);
 
+  const { user, isLoggedIn } = useSelector((state) => state.auth);
+  const { isOpen } = useSelector((state) => state.ui);
 
   // ✅ Sync Firebase Auth user
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => setUser(u));
+    const unsub = onAuthStateChanged(auth, (u) => {
+      if (u) {
+        // User is signed in
+        dispatch(
+          loginSuccess({
+            uid: u.uid,
+            email: u.email,
+            displayName: u.displayName,
+            photoURL: u.photoURL,
+          })
+        );
+      } else {
+        // User is signed out
+        dispatch(logout());
+      }
+    });
     return () => unsub();
-  }, []);
-
-  const toggleSidebar = () => setIsOpen(!isOpen);
+  }, [dispatch]);
 
   // 🔥 Real-time Firestore listener
   useEffect(() => {
@@ -82,23 +117,10 @@ export default function Products() {
             : "",
         };
       });
-      setProducts(list.filter((p) => p.deleted !== 1));
-      setLoading(false);
+      dispatch(setProducts(list.filter((p) => p.deleted !== 1)));
     });
     return () => unsubscribe();
-  }, []);
-
-  // ✅ Checkbox logic
-  const toggleSelect = (id) => {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    );
-  };
-  const toggleSelectAll = () => {
-    if (selectAll) setSelectedIds([]);
-    else setSelectedIds(filtered.map((p) => p.id));
-    setSelectAll(!selectAll);
-  };
+  }, [dispatch]);
 
   // 🗑️ Delete
   const handleDelete = async (ids) => {
@@ -108,8 +130,8 @@ export default function Products() {
         ids.length > 1
           ? `Delete ${ids.length} selected products?`
           : "Delete this product?",
-      text: "This will mark them as deleted.",
-      icon: "warning",
+      text: "This action can't be undone.",
+      icon: "question",
       showCancelButton: true,
       confirmButtonColor: "#d33",
       cancelButtonColor: "#3085d6",
@@ -117,30 +139,36 @@ export default function Products() {
       customClass: { popup: "swal-popup-top" },
     });
     if (result.isConfirmed) {
-      for (const id of ids) await updateDoc(doc(db, "products", id), { deleted: 1 });
-      Swal.fire("Deleted!", "Products marked as deleted.", "success");
-      setSelectedIds([]);
-      setSelectAll(false);
+      dispatch(deleteProducts(ids));
     }
   };
 
   // ✏️ Edit modal open
   const handleEdit = (product) =>
-    setEditingProduct({ ...product, images: product.images || [] });
+    dispatch(setEditingProduct({ ...product, images: product.images || [] }));
+
+  const handleAddNew = () => {
+    dispatch(
+      setAddingProduct({
+        title: "",
+        subtitle: "",
+        description: "",
+        price: 0,
+        discountPrice: 0,
+        ribbon: "",
+        weight: "",
+        images: [],
+        deleted: 0,
+      })
+    );
+  };
 
   const handleEditSave = async () => {
-    try {
-      await updateDoc(doc(db, "products", editingProduct.id), {
-        ...editingProduct,
-        updatedAt: serverTimestamp(),
-      });
+    dispatch(updateProduct({ id: editingProduct.id, data: editingProduct }));
+  };
 
-      Swal.fire("Updated!", "Product saved successfully.", "success");
-      setEditingProduct(null);
-    } catch (error) {
-      console.error("Error updating product:", error);
-      Swal.fire("Error", "Failed to save product.", "error");
-    }
+  const handleAddSave = async () => {
+    dispatch(addProduct(addingProduct));
   };
 
   // 📁 File upload
@@ -150,27 +178,50 @@ export default function Products() {
       if (input) input.click();
     }
   };
+
   const handleDragOver = (e) => {
     e.preventDefault();
     e.stopPropagation();
   };
+
   const handleFileDrop = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    const file = e.dataTransfer.files[0];
-    if (file) uploadImage(file);
+    const files = Array.from(e.dataTransfer.files).slice(0, 5);
+    if (files.length) handleFileSelect({ target: { files } });
   };
 
   const handleFileSelect = async (e) => {
     const files = Array.from(e.target.files).slice(0, 5);
     if (!files.length) return;
 
-    const remainingSlots = 5 - (editingProduct.images?.length || 0);
+    const currentProduct = editingProduct || addingProduct;
+    const remainingSlots = 5 - (currentProduct?.images?.length || 0);
     const filesToUpload = files.slice(0, remainingSlots);
 
-    await uploadMultipleImages(filesToUpload);
+    // Show progress modal
+    Swal.fire({
+      title: "Uploading images...",
+      html: `<div id="upload-progress-text">0%</div>`,
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading(),
+      customClass: { popup: "swal-popup-top" },
+    });
 
-    if (editingProduct.images?.length === 5) {
+    const result = await dispatch(uploadImages({ files: filesToUpload, user }));
+
+    if (result.payload) {
+      dispatch(
+        addImagesToProduct({
+          urls: result.payload,
+          isEditing: !!editingProduct,
+        })
+      );
+    }
+
+    Swal.close();
+
+    if (currentProduct?.images?.length >= 5) {
       let timerInterval;
       Swal.fire({
         title: "Maximum 5",
@@ -187,84 +238,10 @@ export default function Products() {
         },
         willClose: () => {
           clearInterval(timerInterval);
-        }
-      }).then((result) => {
-        /* Read more about handling dismissals below */
-        if (result.dismiss === Swal.DismissReason.timer) {
-          console.log("I was closed by the timer");
-        }
+        },
       });
     }
   };
-
-
-  // ✅ Upload function with proper auth + feedback
-  const uploadMultipleImages = async (files) => {
-    if (!user) {
-      Swal.fire("Unauthorized", "You must be logged in to upload.", "error");
-      return;
-    }
-
-    // Show one global progress modal
-    Swal.fire({
-      title: "Uploading images...",
-      html: `<div id="upload-progress-text">0%</div>`,
-      allowOutsideClick: false,
-      didOpen: () => Swal.showLoading(),
-      customClass: { popup: "swal-popup-top" },
-    });
-
-    try {
-      let completed = 0;
-      const total = files.length;
-      const uploadedUrls = [];
-
-      // Upload each file sequentially (or you can parallelize if you prefer)
-      for (const file of files) {
-        const storageRef = ref(storage, `products/${Date.now()}_${file.name}`);
-        const uploadTask = uploadBytesResumable(storageRef, file);
-
-        await new Promise((resolve, reject) => {
-          uploadTask.on(
-            "state_changed",
-            (snap) => {
-              const singleProgress = Math.round(
-                (snap.bytesTransferred / snap.totalBytes) * 100
-              );
-              const overallProgress = Math.round(
-                ((completed + singleProgress / 100) / total) * 100
-              );
-              const el = document.getElementById("upload-progress-text");
-              if (el) el.textContent = `${overallProgress}%`;
-              setUploadProgress(overallProgress);
-            },
-            (error) => reject(error),
-            async () => {
-              const url = await getDownloadURL(uploadTask.snapshot.ref);
-              uploadedUrls.push(url);
-              completed++;
-              resolve();
-            }
-          );
-        });
-      }
-
-      // Add all new URLs to state together
-      setEditingProduct((prev) => ({
-        ...prev,
-        images: [...(prev.images || []), ...uploadedUrls],
-      }));
-
-      setUploadProgress(0);
-      Swal.close();
-      Swal.fire("✅ Upload Complete", `${uploadedUrls.length} image(s) uploaded successfully.`, "success");
-    } catch (error) {
-      console.error(error);
-      Swal.close();
-      Swal.fire("Error", "Some uploads failed.", "error");
-    }
-  };
-
 
   const handleImageDelete = async (url) => {
     const result = await Swal.fire({
@@ -276,60 +253,72 @@ export default function Products() {
       customClass: { popup: "swal-popup-top" },
     });
     if (!result.isConfirmed) return;
-    try {
-      const imageRef = ref(storage, url);
-      await deleteObject(imageRef);
-      setEditingProduct((prev) => ({
-        ...prev,
-        images: prev.images.filter((i) => i !== url),
-      }));
-      Swal.fire("Deleted!", "Image removed.", "success");
-    } catch (err) {
-      console.error(err);
-      Swal.fire("Error", "Could not delete image.", "error");
-    }
+
+    await dispatch(deleteImage(url));
+    dispatch(
+      removeImageFromProduct({
+        url,
+        isEditing: !!editingProduct,
+      })
+    );
   };
 
   // 🖱️ Image reordering
-  const handleDragStart = (index) => setDraggingIndex(index);
+  const handleDragStart = (index) => dispatch(setDraggingIndex(index));
+
   const handleDragEnter = (index) => {
-    if (!editingProduct || !Array.isArray(editingProduct.images)) return;
+    if (!editingProduct && !addingProduct) return;
     if (index === draggingIndex || draggingIndex === null) return;
 
-    setEditingProduct((prev) => {
-      if (!prev?.images) return prev;
-      const newImages = [...prev.images];
-      const [dragged] = newImages.splice(draggingIndex, 1);
-      newImages.splice(index, 0, dragged);
-      return { ...prev, images: newImages };
-    });
+    dispatch(
+      reorderImages({
+        fromIndex: draggingIndex,
+        toIndex: index,
+        isEditing: !!editingProduct,
+      })
+    );
 
-    setDraggingIndex(index);
+    dispatch(setDraggingIndex(index));
   };
-  const handleDragEnd = () => setDraggingIndex(null);
+
+  const handleDragEnd = () => dispatch(setDraggingIndex(null));
 
   // 🔍 Filter + Sort
+  // 🔍 Filter + Sort
   const filtered = products
-    .filter((p) =>
-      [p.title, p.ribbon, p.createdAt]
-        .join(" ")
-        .toLowerCase()
-        .includes(search.toLowerCase().trim())
-    )
-    .filter((p) =>
-      filter === "In Stock"
-        ? p.ribbon !== "Out of Stock"
-        : filter === "Out of Stock"
-          ? p.ribbon === "Out of Stock"
-          : true
-    )
-    .sort((a, b) =>
-      sort === "Price Lowest First"
-        ? a.price - b.price
-        : sort === "Price Highest First"
-          ? b.price - a.price
-          : 0
-    );
+    .filter((p) => {
+      try {
+        // ✅ Safely handle undefined/null values
+        const title = (p?.title || "").toString();
+        const ribbon = (p?.ribbon || "").toString();
+        const createdAt = (p?.createdAt || "").toString();
+        const searchText = [title, ribbon, createdAt].join(" ").toLowerCase();
+        return searchText.includes((search || "").toLowerCase().trim());
+      } catch (error) {
+        console.error("Filter error for product:", p, error);
+        return false;
+      }
+    })
+    .filter((p) => {
+      if (filter === "In Stock") {
+        return p?.ribbon !== "Out of Stock";
+      } else if (filter === "Out of Stock") {
+        return p?.ribbon === "Out of Stock";
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      const priceA = Number(a?.price) || 0;
+      const priceB = Number(b?.price) || 0;
+
+      if (sort === "Price Lowest First") {
+        return priceA - priceB;
+      } else if (sort === "Price Highest First") {
+        return priceB - priceA;
+      }
+      return 0;
+    });
+
 
   if (loading)
     return (
@@ -344,7 +333,7 @@ export default function Products() {
 
   return (
     <div className="products-container">
-      <Header toggleSidebar={toggleSidebar} />
+      <Header toggleSidebar={() => dispatch(toggleSidebarAction())} />
       <Sidebar
         barStatus={isOpen ? "active-menu" : "inactive-menu"}
         products="active"
@@ -353,175 +342,198 @@ export default function Products() {
         <div className="tables-section">
           <TopBar
             search={search}
-            inpchange={(e) => setSearch(e.target.value)}
+            inpchange={(e) => dispatch(setSearch(e.target.value))}
             filter={filter}
-            filchange={(e) => setFilter(e.target.value)}
+            filchange={(e) => dispatch(setFilter(e.target.value))}
             sort={sort}
-            selchange={(e) => setSort(e.target.value)}
+            selchange={(e) => dispatch(setSort(e.target.value))}
             delete={() => handleDelete(selectedIds)}
             length={selectedIds.length}
             addwidth="20%"
             delwidth="40%"
             data={selectedIds.length}
-            add={() => navigate("/products-add")}
+            add={handleAddNew}
             page="products"
+            searchBy="🔍 Search by title, ribbon..."
           />
-
-          <table className="product-table">
-            <thead>
-              <tr>
-                <th>
-                  <input
-                    type="checkbox"
-                    checked={selectAll}
-                    onChange={toggleSelectAll}
-                  />
-                </th>
-                <th>Product</th>
-                <th>Ribbon</th>
-                <th>Weight</th>
-                <th>Last Updated</th>
-                <th>Status</th>
-                <th>Price</th>
-                <th style={{ textAlign: "center" }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((p) => (
-                <React.Fragment key={p.id}>
-                  <tr
-                    onMouseEnter={() => setHovered(p.id)}
-                    onMouseLeave={() => setHovered(null)}
-                  >
-                    <td>
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.includes(p.id)}
-                        onChange={() => toggleSelect(p.id)}
-                      />
-                    </td>
-                    <td>
-                      <div className="product-name-cell">
-                        <img src={p.images?.[0]} alt={p.title} />
-                        <span>{p.title}</span>
-                      </div>
-                    </td>
-                    <td>{p.ribbon}</td>
-                    <td>{p.weight}g</td>
-                    <td>{p.updatedAt}</td>
-                    <td>
-                      <span
-                        className={`status ${p.ribbon === "Out of Stock" ? "out" : "available"
-                          }`}
-                      >
-                        {p.ribbon === "Out of Stock"
-                          ? "Out of Stock"
-                          : "Available"}
-                      </span>
-                    </td>
-                    <td>
-                      {p.discountPrice ? (
-                        <>
-                          <span className="discount">${p.discountPrice}</span>{" "}
-                          <span className="old">${p.price}</span>
-                        </>
-                      ) : (
-                        `$${p.price}`
-                      )}
-                    </td>
-                    <td style={{ textAlign: "center" }}>
-                      <button
-                        onClick={() => handleEdit(p)}
-                        style={{
-                          background: "transparent",
-                          border: "none",
-                          cursor: "pointer",
-                        }}
-                      >
-                        <img src={Edit} alt="✏️" style={{ width: 30 }} />
-                      </button>
+          <div className="orders-table-container">
+            <table className="orders-table">
+              <thead>
+                <tr>
+                  <th>
+                    <input
+                      type="checkbox"
+                      checked={selectAll}
+                      onChange={() =>
+                        dispatch(toggleSelectAll(filtered.map((p) => p.id)))
+                      }
+                    />
+                  </th>
+                  <th>Product</th>
+                  <th>Ribbon</th>
+                  <th>Weight</th>
+                  <th>Last Updated</th>
+                  <th>Status</th>
+                  <th>Price</th>
+                  <th style={{ textAlign: "center" }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan="10" className="no-orders">
+                      No matching product found..
                     </td>
                   </tr>
+                ) : (<>
+                  {
+                    filtered.map((p) => (
+                      <React.Fragment key={p.id}>
+                        <tr
+                          onMouseEnter={() => dispatch(setHovered(p.id))}
+                          onMouseLeave={() => dispatch(setHovered(null))}
+                        >
+                          <td>
+                            <input
+                              type="checkbox"
+                              checked={selectedIds.includes(p.id)}
+                              onChange={() => dispatch(toggleSelect(p.id))}
+                            />
+                          </td>
+                          <td>
+                            <div className="product-name-cell">
+                              <img src={p.images?.[0]} alt={p.title} />
+                              <span>{p.title}</span>
+                            </div>
+                          </td>
+                          <td>{p.ribbon}</td>
+                          <td>{p.weight}g</td>
+                          <td>{p.updatedAt}</td>
+                          <td>
+                            <span
+                              className={`status ${p.ribbon === "Out of Stock" ? "out" : "available"
+                                }`}
+                            >
+                              {p.ribbon === "Out of Stock"
+                                ? "Out of Stock"
+                                : "Available"}
+                            </span>
+                          </td>
+                          <td>
+                            {p.discountPrice ? (
+                              <>
+                                <span className="discount">${p.discountPrice}</span>{" "}
+                                <span className="old">${p.price}</span>
+                              </>
+                            ) : (
+                              `$${p.price}`
+                            )}
+                          </td>
+                          <td style={{ textAlign: "center" }}>
+                            <button
+                              onClick={() => handleEdit(p)}
+                              style={{
+                                background: "transparent",
+                                border: "none",
+                                cursor: "pointer",
+                              }}
+                            >
+                              <img src={Edit} alt="✏️" style={{ width: 30 }} />
+                            </button>
+                          </td>
+                        </tr>
 
-                  {hovered === p.id && (
-                    <div className="hover-card-cell">
-                      <div className="hover-card">
-                        <img src={p.images?.[0]} alt={p.title} />
-                        <h4>{p.title}</h4>
-                        <p>{p.subtitle}</p>
-                        <p>{p.description || "No description"}</p>
-                      </div>
-                    </div>
-                  )}
-                </React.Fragment>
-              ))}
-            </tbody>
-          </table>
+                        {hovered === p.id && (
+                          <div className="hover-card-cell">
+                            <div className="hover-card">
+                              <img src={p.images?.[0]} alt={p.title} />
+                              <h4>{p.title}</h4>
+                              <p>{p.subtitle}</p>
+                              <p>{p.description || "No description"}</p>
+                            </div>
+                          </div>
+                        )}
+                      </React.Fragment>
+                    ))
+                  }
+                </>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </section>
       <Footer />
 
-      {/* ✏️ Modal (Glassy Registration-Style) */}
+      {/* ✏️ Edit Modal */}
       {editingProduct && (
-        <div className="modal-overlay" onClick={() => setEditingProduct(null)}>
-          <div
-            className="glass-form"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div
+          className="modal-overlay"
+          onClick={() => dispatch(setEditingProduct(null))}
+        >
+          <div className="glass-form" onClick={(e) => e.stopPropagation()}>
             <div>
               <h2>Product Editor</h2>
               <p>Update your product details below</p>
             </div>
             <div className="edit-modal-grid">
-              {/* Title */}
               <div className="left-col">
                 <div className="input-tooltip">
-                  <div className="input-group" onMouseEnter={() => setToolTip("Title")} onMouseLeave={() => setToolTip(null)}>
+                  <div
+                    className="input-group"
+                    onMouseEnter={() => dispatch(setToolTip("Title"))}
+                    onMouseLeave={() => dispatch(setToolTip(null))}
+                  >
                     <i className="fa-solid fa-box"></i>
                     <input
                       type="text"
                       placeholder="Product Title"
                       value={editingProduct.title}
                       onChange={(e) =>
-                        setEditingProduct({ ...editingProduct, title: e.target.value })
+                        dispatch(updateEditingProduct({ title: e.target.value }))
                       }
                     />
                   </div>
-                  {toolTip === "Title" && (
-                    <small>Enter title here</small>
-                  )}
+                  {toolTip === "Title" && <small>Enter title here</small>}
                 </div>
-                {/* Subtitle */}
+
                 <div className="input-tooltip">
-                  <div className="input-group" onMouseEnter={() => setToolTip("Subtitle")} onMouseLeave={() => setToolTip(null)}>
+                  <div
+                    className="input-group"
+                    onMouseEnter={() => dispatch(setToolTip("Subtitle"))}
+                    onMouseLeave={() => dispatch(setToolTip(null))}
+                  >
                     <i className="fa-solid fa-pen-to-square"></i>
                     <input
                       type="text"
                       placeholder="Subtitle"
                       value={editingProduct.subtitle}
                       onChange={(e) =>
-                        setEditingProduct({ ...editingProduct, subtitle: e.target.value })
+                        dispatch(
+                          updateEditingProduct({ subtitle: e.target.value })
+                        )
                       }
                     />
                   </div>
-                  {toolTip === "Subtitle" && (
-                    <small>Enter subtitle here</small>
-                  )}
+                  {toolTip === "Subtitle" && <small>Enter subtitle here</small>}
                 </div>
-                {/* Description */}
-                <div className="input-tooltip" style={{ height: '140px' }}>
-                  <div className="input-group" onMouseEnter={() => setToolTip("Description")} onMouseLeave={() => setToolTip(null)}>
+
+                <div className="input-tooltip" style={{ height: "140px" }}>
+                  <div
+                    className="input-group"
+                    onMouseEnter={() => dispatch(setToolTip("Description"))}
+                    onMouseLeave={() => dispatch(setToolTip(null))}
+                  >
                     <i className="fa-solid fa-align-left"></i>
                     <textarea
                       rows={7}
-                      style={{ resize: 'none' }}
+                      style={{ resize: "none" }}
                       placeholder="Description"
                       value={editingProduct.description}
                       onChange={(e) =>
-                        setEditingProduct({
-                          ...editingProduct,
-                          description: e.target.value,
-                        })
+                        dispatch(
+                          updateEditingProduct({ description: e.target.value })
+                        )
                       }
                     />
                   </div>
@@ -530,7 +542,6 @@ export default function Products() {
                   )}
                 </div>
 
-                {/* Drop Zone */}
                 <div
                   className="drop-zone"
                   ref={dropRef}
@@ -540,15 +551,23 @@ export default function Products() {
                 >
                   <p>📁 Drag & drop product images or click to upload</p>
                   <p>You can upload maximum of 5 files only..</p>
-                  <input type="file" accept="image/*" multiple onChange={handleFileSelect} hidden />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleFileSelect}
+                    hidden
+                  />
                   {uploadProgress > 0 && (
                     <div className="progress-bar">
-                      <div className="progress" style={{ width: `${uploadProgress}%` }} />
+                      <div
+                        className="progress"
+                        style={{ width: `${uploadProgress}%` }}
+                      />
                     </div>
                   )}
                 </div>
 
-                {/* Image Grid with Drag */}
                 <div className="image-preview-grid">
                   {editingProduct.images?.map((img, i) => (
                     <div
@@ -565,20 +584,23 @@ export default function Products() {
                   ))}
                 </div>
               </div>
+
               <div className="right-col">
-                {/* Price & Discount */}
                 <div className="input-tooltip">
-                  <div className="input-group" onMouseEnter={() => setToolTip("Actual Price")} onMouseLeave={() => setToolTip(null)}>
+                  <div
+                    className="input-group"
+                    onMouseEnter={() => dispatch(setToolTip("Actual Price"))}
+                    onMouseLeave={() => dispatch(setToolTip(null))}
+                  >
                     <i className="fa-solid fa-dollar-sign"></i>
                     <input
                       type="number"
                       placeholder="Price"
                       value={editingProduct.price}
                       onChange={(e) =>
-                        setEditingProduct({
-                          ...editingProduct,
-                          price: Number(e.target.value),
-                        })
+                        dispatch(
+                          updateEditingProduct({ price: Number(e.target.value) })
+                        )
                       }
                     />
                   </div>
@@ -586,18 +608,24 @@ export default function Products() {
                     <small>Enter actual price here</small>
                   )}
                 </div>
+
                 <div className="input-tooltip">
-                  <div className="input-group" onMouseEnter={() => setToolTip("Discounted Price")} onMouseLeave={() => setToolTip(null)}>
+                  <div
+                    className="input-group"
+                    onMouseEnter={() => dispatch(setToolTip("Discounted Price"))}
+                    onMouseLeave={() => dispatch(setToolTip(null))}
+                  >
                     <i className="fa-solid fa-dollar-sign"></i>
                     <input
                       type="number"
                       placeholder="Discount Price"
                       value={editingProduct.discountPrice || ""}
                       onChange={(e) =>
-                        setEditingProduct({
-                          ...editingProduct,
-                          discountPrice: Number(e.target.value),
-                        })
+                        dispatch(
+                          updateEditingProduct({
+                            discountPrice: Number(e.target.value),
+                          })
+                        )
                       }
                     />
                   </div>
@@ -605,33 +633,44 @@ export default function Products() {
                     <small>Enter discounted price here</small>
                   )}
                 </div>
-                {/* Ribbon */}
+
                 <div className="input-tooltip">
-                  <div className="input-group" onMouseEnter={() => setToolTip("Ribbon")} onMouseLeave={() => setToolTip(null)}>
+                  <div
+                    className="input-group"
+                    onMouseEnter={() => dispatch(setToolTip("Ribbon"))}
+                    onMouseLeave={() => dispatch(setToolTip(null))}
+                  >
                     <i className="fa-solid fa-ribbon"></i>
                     <input
                       type="text"
                       placeholder="Ribbon (e.g. New, Sale)"
                       value={editingProduct.ribbon}
                       onChange={(e) =>
-                        setEditingProduct({ ...editingProduct, ribbon: e.target.value })
+                        dispatch(updateEditingProduct({ ribbon: e.target.value }))
                       }
                     />
                   </div>
                   {toolTip === "Ribbon" && (
-                    <small>Enter Ribbon here. If product is not in stock please write Out of Stock.</small>
+                    <small style={{ paddingTop: 10 }}>
+                      Enter Ribbon here. If product is not in stock please write
+                      Out of Stock.
+                    </small>
                   )}
                 </div>
-                {/* Weight */}
-                <div className="input-tooltip" style={{ marginBottom: 30 }}>
-                  <div className="input-group" onMouseEnter={() => setToolTip("Weight")} onMouseLeave={() => setToolTip(null)}>
+
+                <div className="input-tooltip" style={{ marginTop: 20 }}>
+                  <div
+                    className="input-group"
+                    onMouseEnter={() => dispatch(setToolTip("Weight"))}
+                    onMouseLeave={() => dispatch(setToolTip(null))}
+                  >
                     <i className="fa-solid fa-weight-hanging"></i>
                     <input
                       type="text"
                       placeholder="Weight (g)"
                       value={editingProduct.weight}
                       onChange={(e) =>
-                        setEditingProduct({ ...editingProduct, weight: e.target.value })
+                        dispatch(updateEditingProduct({ weight: e.target.value }))
                       }
                     />
                   </div>
@@ -646,7 +685,10 @@ export default function Products() {
               <button className="save-btn-edit" onClick={handleEditSave}>
                 💾 Save Changes
               </button>
-              <button className="cancel-btn-edit" onClick={() => setEditingProduct(null)}>
+              <button
+                className="cancel-btn-edit"
+                onClick={() => dispatch(setEditingProduct(null))}
+              >
                 ✖ Cancel
               </button>
             </div>
@@ -654,6 +696,236 @@ export default function Products() {
         </div>
       )}
 
+      {/* ➕ Add New Product Modal */}
+      {addingProduct && (
+        <div
+          className="modal-overlay"
+          onClick={() => dispatch(setAddingProduct(null))}
+        >
+          <div className="glass-form" onClick={(e) => e.stopPropagation()}>
+            <div>
+              <h2>Add New Product</h2>
+              <p>Enter product details below</p>
+            </div>
+            <div className="edit-modal-grid">
+              <div className="left-col">
+                <div className="input-tooltip">
+                  <div
+                    className="input-group"
+                    onMouseEnter={() => dispatch(setToolTip("Title"))}
+                    onMouseLeave={() => dispatch(setToolTip(null))}
+                  >
+                    <i className="fa-solid fa-box"></i>
+                    <input
+                      type="text"
+                      placeholder="Product Title"
+                      value={addingProduct.title}
+                      onChange={(e) =>
+                        dispatch(updateAddingProduct({ title: e.target.value }))
+                      }
+                    />
+                  </div>
+                  {toolTip === "Title" && <small>Enter title here</small>}
+                </div>
+
+                <div className="input-tooltip">
+                  <div
+                    className="input-group"
+                    onMouseEnter={() => dispatch(setToolTip("Subtitle"))}
+                    onMouseLeave={() => dispatch(setToolTip(null))}
+                  >
+                    <i className="fa-solid fa-pen-to-square"></i>
+                    <input
+                      type="text"
+                      placeholder="Subtitle"
+                      value={addingProduct.subtitle}
+                      onChange={(e) =>
+                        dispatch(
+                          updateAddingProduct({ subtitle: e.target.value })
+                        )
+                      }
+                    />
+                  </div>
+                  {toolTip === "Subtitle" && <small>Enter subtitle here</small>}
+                </div>
+
+                <div className="input-tooltip" style={{ height: "140px" }}>
+                  <div
+                    className="input-group"
+                    onMouseEnter={() => dispatch(setToolTip("Description"))}
+                    onMouseLeave={() => dispatch(setToolTip(null))}
+                  >
+                    <i className="fa-solid fa-align-left"></i>
+                    <textarea
+                      rows={7}
+                      style={{ resize: "none" }}
+                      placeholder="Description"
+                      value={addingProduct.description}
+                      onChange={(e) =>
+                        dispatch(
+                          updateAddingProduct({ description: e.target.value })
+                        )
+                      }
+                    />
+                  </div>
+                  {toolTip === "Description" && (
+                    <small>Enter description here</small>
+                  )}
+                </div>
+
+                <div
+                  className="drop-zone"
+                  ref={dropRef}
+                  onClick={openFilePicker}
+                  onDrop={handleFileDrop}
+                  onDragOver={handleDragOver}
+                >
+                  <p>📁 Drag & drop product images or click to upload</p>
+                  <p>You can upload maximum of 5 files only..</p>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleFileSelect}
+                    hidden
+                  />
+                  {uploadProgress > 0 && (
+                    <div className="progress-bar">
+                      <div
+                        className="progress"
+                        style={{ width: `${uploadProgress}%` }}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div className="image-preview-grid">
+                  {addingProduct.images?.map((img, i) => (
+                    <div
+                      key={i}
+                      className="preview-item"
+                      draggable
+                      onDragStart={() => handleDragStart(i)}
+                      onDragEnter={() => handleDragEnter(i)}
+                      onDragEnd={handleDragEnd}
+                    >
+                      <img src={img} alt={`img-${i}`} />
+                      <button onClick={() => handleImageDelete(img)}>✖</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="right-col">
+                <div className="input-tooltip">
+                  <div
+                    className="input-group"
+                    onMouseEnter={() => dispatch(setToolTip("Actual Price"))}
+                    onMouseLeave={() => dispatch(setToolTip(null))}
+                  >
+                    <i className="fa-solid fa-dollar-sign"></i>
+                    <input
+                      type="number"
+                      placeholder="Price"
+                      value={addingProduct.price}
+                      onChange={(e) =>
+                        dispatch(
+                          updateAddingProduct({ price: Number(e.target.value) })
+                        )
+                      }
+                    />
+                  </div>
+                  {toolTip === "Actual Price" && (
+                    <small>Enter actual price here</small>
+                  )}
+                </div>
+
+                <div className="input-tooltip">
+                  <div
+                    className="input-group"
+                    onMouseEnter={() => dispatch(setToolTip("Discounted Price"))}
+                    onMouseLeave={() => dispatch(setToolTip(null))}
+                  >
+                    <i className="fa-solid fa-dollar-sign"></i>
+                    <input
+                      type="number"
+                      placeholder="Discount Price"
+                      value={addingProduct.discountPrice || ""}
+                      onChange={(e) =>
+                        dispatch(
+                          updateAddingProduct({
+                            discountPrice: Number(e.target.value),
+                          })
+                        )
+                      }
+                    />
+                  </div>
+                  {toolTip === "Discounted Price" && (
+                    <small>Enter discounted price here</small>
+                  )}
+                </div>
+
+                <div className="input-tooltip">
+                  <div
+                    className="input-group"
+                    onMouseEnter={() => dispatch(setToolTip("Ribbon"))}
+                    onMouseLeave={() => dispatch(setToolTip(null))}
+                  >
+                    <i className="fa-solid fa-ribbon"></i>
+                    <input
+                      type="text"
+                      placeholder="Ribbon (e.g. New, Sale)"
+                      value={addingProduct.ribbon}
+                      onChange={(e) =>
+                        dispatch(updateAddingProduct({ ribbon: e.target.value }))
+                      }
+                    />
+                  </div>
+                  {toolTip === "Ribbon" && (
+                    <small style={{ paddingTop: 10 }}>
+                      Enter Ribbon here. If product is not in stock please write
+                      Out of Stock.
+                    </small>
+                  )}
+                </div>
+
+                <div className="input-tooltip" style={{ marginTop: 20 }}>
+                  <div
+                    className="input-group"
+                    onMouseEnter={() => dispatch(setToolTip("Weight"))}
+                    onMouseLeave={() => dispatch(setToolTip(null))}
+                  >
+                    <i className="fa-solid fa-weight-hanging"></i>
+                    <input
+                      type="text"
+                      placeholder="Weight (g)"
+                      value={addingProduct.weight}
+                      onChange={(e) =>
+                        dispatch(updateAddingProduct({ weight: e.target.value }))
+                      }
+                    />
+                  </div>
+                  {toolTip === "Weight" && (
+                    <small>Enter product weight here in gms.</small>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="edit-actions">
+              <button className="save-btn-edit" onClick={handleAddSave}>
+                ➕ Add Product
+              </button>
+              <button
+                className="cancel-btn-edit"
+                onClick={() => dispatch(setAddingProduct(null))}
+              >
+                ✖ Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

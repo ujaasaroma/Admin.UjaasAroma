@@ -46,6 +46,12 @@
   font-weight: 600;
 }
 
+.menu-item>small {
+  font-weight: 600;
+  font-size: 8px;
+  margin-top: 5px;
+}
+
 
 .menu-item:hover {
   background-color: #ccc;
@@ -128,7 +134,7 @@
 /* Hide text labels when collapsed */
 .sidebar.collapsed .menu-item span,
 .sidebar.collapsed .submenu,
-.sidebar.collapsed .submenu-item span {
+.sidebar.collapsed .submenu-item {
   display: none;
 }
 
