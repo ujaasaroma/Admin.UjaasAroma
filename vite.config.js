@@ -10,6 +10,7 @@ export default defineConfig({
       },
     }),
   ],
+  base: "/Admin.UjaasAroma/",
   server: {
     host: true, // same as --host
     port: 5173, // or another open port
