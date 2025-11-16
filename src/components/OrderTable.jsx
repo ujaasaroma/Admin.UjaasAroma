@@ -1,25 +1,31 @@
-import React, { useEffect, useMemo } from "react";
+// src/components/OrdersTable.jsx
+import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { collection, onSnapshot, query } from "firebase/firestore";
+import { collection, onSnapshot, query, doc, updateDoc } from "firebase/firestore";
 import { db } from "../config/firebase";
 import { FiFileText } from "react-icons/fi";
+import Swal from "sweetalert2";
+import { getStorage, ref, getDownloadURL } from "firebase/storage";
+
+const storage = getStorage();
+
 import {
   setOrders,
   toggleSelectOrder,
   toggleSelectAllOrders,
-  setSelectedOrder,
 } from "../features/ordersSlice";
+
 import "./styles/OrderTable.css";
 
 const OrdersTable = ({ orderType }) => {
   const dispatch = useDispatch();
 
-  // Redux state
   const { allOrders, loading, selectedOrderIds, selectAll } = useSelector(
     (state) => state.orders
   );
+  const [updatingStatus, setUpdatingStatus] = useState(null); // orderNumber that is updating
 
-  // 🔥 Real-time listener for orders
+  // 🔥 Real-time listener
   useEffect(() => {
     const q = query(collection(db, "successOrders"));
     const unsub = onSnapshot(q, (snapshot) => {
@@ -33,7 +39,7 @@ const OrdersTable = ({ orderType }) => {
     return () => unsub();
   }, [dispatch]);
 
-  // 🔍 Filter orders based on orderType
+  // 🔍 Filter orders
   const filteredOrders = useMemo(() => {
     if (!orderType) return allOrders;
     return allOrders.filter(
@@ -41,13 +47,85 @@ const OrdersTable = ({ orderType }) => {
     );
   }, [allOrders, orderType]);
 
-  // Handle view invoice
-  const handleViewInvoice = (invoiceUrl) => {
-    if (!invoiceUrl) return;
-    const url = `https://firebasestorage.googleapis.com/v0/b/ujaas-aroma.firebasestorage.app/o/${encodeURIComponent(
-      invoiceUrl
-    )}?alt=media`;
-    window.open(url, "_blank", "noopener,noreferrer");
+  // 📄 View Invoice
+  const handleViewInvoice = async (invoiceUrl) => {
+    try {
+      if (!invoiceUrl) return;
+
+      // 🔥 Create a Storage reference from the stored path
+      const fileRef = ref(storage, invoiceUrl);
+
+      // 🔥 This automatically applies Firebase authentication tokens
+      const secureUrl = await getDownloadURL(fileRef);
+
+      window.open(secureUrl, "_blank", "noopener,noreferrer");
+
+    } catch (error) {
+      console.error("Error fetching invoice URL:", error);
+      Swal.fire({
+        icon: "error",
+        title: "Unable to Load Invoice",
+        text: "This file requires authentication. Please try again.",
+        confirmButtonColor: "#000",
+      });
+    }
+  };
+
+  // 📌 Update Order Status (Admin only)
+  const updateOrderStatus = async (order, newStatus) => {
+    if (order.status === newStatus) return;
+
+    if (order.status === "delivered") {
+      Swal.fire({
+        icon: "info",
+        title: "Locked",
+        text: "Delivered orders cannot be updated.",
+        confirmButtonColor: "#000",
+      });
+      return;
+    }
+    if (newStatus === "delivered") {
+      const confirm = await Swal.fire({
+        title: "Mark Order as Delivered?",
+        text: "Once marked as Delivered, you will not be able to change the status again.",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonText: "I am Sure..",
+        cancelButtonText: "Cancel",
+        confirmButtonColor: "#16a34a",
+        cancelButtonColor: "#d33",
+      });
+
+      if (!confirm.isConfirmed) {
+        return; // user cancelled
+      }
+    }
+
+    setUpdatingStatus(order.orderNumber);
+
+    try {
+      await updateDoc(doc(db, "successOrders", order.orderNumber), {
+        status: newStatus,
+        updatedAt: new Date(),
+      });
+
+      Swal.fire({
+        icon: "success",
+        title: "Updated",
+        text: `Order marked as ${newStatus}`,
+        confirmButtonColor: "#000",
+      });
+    } catch (err) {
+      console.error(err);
+      Swal.fire({
+        icon: "error",
+        title: "Failed",
+        text: "Unable to update status. Try again later.",
+        confirmButtonColor: "#000",
+      });
+    }
+
+    setUpdatingStatus(null);
   };
 
   return (
@@ -60,9 +138,7 @@ const OrdersTable = ({ orderType }) => {
                 type="checkbox"
                 checked={selectAll}
                 onChange={() =>
-                  dispatch(
-                    toggleSelectAllOrders(filteredOrders.map((o) => o.id))
-                  )
+                  dispatch(toggleSelectAllOrders(filteredOrders.map((o) => o.id)))
                 }
               />
             </th>
@@ -77,6 +153,7 @@ const OrdersTable = ({ orderType }) => {
             <th>Actions</th>
           </tr>
         </thead>
+
         <tbody>
           {filteredOrders.length === 0 ? (
             <tr>
@@ -96,22 +173,57 @@ const OrdersTable = ({ orderType }) => {
                     onChange={() => dispatch(toggleSelectOrder(order.id))}
                   />
                 </td>
+
                 <td>{order.orderNumber || "-"}</td>
                 <td>{order.customerInfo?.name || "-"}</td>
                 <td>{order.customerInfo?.email || "-"}</td>
                 <td>{order.customerInfo?.phone || "-"}</td>
+
                 <td>₹{order.total?.toFixed(2) || "0.00"}</td>
+
                 <td>{order.payment?.status || "-"}</td>
+
+                {/* STATUS + ADMIN DROPDOWN */}
                 <td>
-                  <span
-                    className={`status-chip ${
-                      order.status?.toLowerCase() || ""
-                    }`}
-                  >
-                    {order.status || "-"}
-                  </span>
+                  {order.status === "delivered" ? (
+                    // 🔒 Delivered is locked
+                    <span className="status-chip delivered">delivered</span>
+                  ) : (
+                    <div className="status-dropdown">
+                      <button className={`status-btn ${order.status}`}>
+                        {updatingStatus === order.orderNumber ? (
+                          <div className="spinner" />
+                        ) : (
+                          order.status
+                        )}
+                      </button>
+
+                      <div className="dropdown-content">
+                        <div
+                          className="dropdown-item"
+                          onClick={() => updateOrderStatus(order, "processing")}
+                        >
+                          Processing
+                        </div>
+                        <div
+                          className="dropdown-item"
+                          onClick={() => updateOrderStatus(order, "delivered")}
+                        >
+                          Delivered
+                        </div>
+                        <div
+                          className="dropdown-item"
+                          onClick={() => updateOrderStatus(order, "cancelled")}
+                        >
+                          Cancelled
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </td>
+
                 <td>{order.orderDate || "-"}</td>
+
                 <td className="actions-cell">
                   {order.invoiceUrl ? (
                     <button
